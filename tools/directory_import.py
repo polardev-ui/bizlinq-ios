@@ -40,7 +40,7 @@ PURPOSE_CATEGORY = [
     (("real estate", "realtor", "property", "rei "), "Real Estate Meetings"),
     (("tech", "software", "developer", "coding", "data", "cyber", "ai "), "Technology Meetings"),
     (("founder", "startup", "entrepreneur", "pitch"), "Business Networking"),
-    (("market", "sales", "mlm", "multi-level", "branding"), "Network Marketing"),
+    (("market", "sales", "mlm", "multi-level", "branding"), "Business Networking"),
     (("referral", "network", "chamber", "business", "professional", "executive",
       "leadership", "finance", "invest", "women", "career", "young professional",
       "summit", "expo", "conference", "mixer", "entrepreneur"), "Business Networking"),

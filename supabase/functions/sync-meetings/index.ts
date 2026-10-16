@@ -13,9 +13,9 @@ const GROUPS_PER_RUN = 60;
 
 const TOPIC_CATEGORY: Array<[string[], string]> = [
   [["real estate", "real-estate", "realtor", "property"], "Real Estate Meetings"],
-  [["founder", "startup", "entrepreneur", "pitch", "venture"], "Business Start Ups"],
+  [["founder", "startup", "entrepreneur", "pitch", "venture"], "Business Networking"],
   [["tech", "software", "developer", "coding", "data science", "artificial intelligence", "cyber"], "Technology Meetings"],
-  [["market", "sales", "seo", "social media", "advertising", "branding", "mlm", "multi-level"], "Network Marketing"],
+  [["market", "sales", "seo", "social media", "advertising", "branding", "mlm", "multi-level"], "Business Networking"],
   [["finance", "invest", "stock", "crypto", "trading", "wealth", "women", "career", "young professional", "millennial", "job"], "Business Networking"],
 ];
 
@@ -45,7 +45,7 @@ function categorize(topics: string[], title: string, group: string): string {
   for (const [keys, cat] of TOPIC_CATEGORY) {
     if (keys.some((k) => hay.includes(k))) return cat;
   }
-  return "General Networking";
+  return "Business Networking";
 }
 
 function plain(s: string, limit: number): string {

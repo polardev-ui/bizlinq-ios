@@ -45,7 +45,7 @@ TOPIC_CATEGORY = [
     (("real estate", "real-estate", "realtor", "property"), "Real Estate Meetings"),
     (("founder", "startup", "entrepreneur", "pitch", "venture"), "Business Networking"),
     (("tech", "software", "developer", "coding", "data science", "ai ", "artificial intelligence", "cyber"), "Technology Meetings"),
-    (("market", "sales", "seo", "social media", "advertising", "branding", "mlm", "multi-level"), "Network Marketing"),
+    (("market", "sales", "seo", "social media", "advertising", "branding", "mlm", "multi-level"), "Business Networking"),
     (("finance", "invest", "stock", "crypto", "trading", "wealth", "women", "career", "young professional", "millennial", "job"), "Business Networking"),
 ]
 
@@ -155,14 +155,14 @@ def categorize(topics, title, group_name=""):
     if _any(STARTUP_PATTERNS, title_l):
         return "Business Networking"
     if _any(MARKETING_PATTERNS, title_l):
-        return "Network Marketing"
+        return "Business Networking"
     # 3. Group-name signals.
     if _any(TECH_PATTERNS, group_l):
         return "Technology Meetings"
     if _any(STARTUP_PATTERNS, group_l):
         return "Business Networking"
     if _any(MARKETING_PATTERNS, group_l):
-        return "Network Marketing"
+        return "Business Networking"
     # 4. Topics only as a last resort, and only for explicit RE.
     if _any(RE_PATTERNS, topics_l):
         return "Real Estate Meetings"

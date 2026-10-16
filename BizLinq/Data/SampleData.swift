@@ -110,7 +110,7 @@ enum SampleData {
             make(
                 title: "Austin SaaS Sales Breakfast",
                 group: "ATX Revenue Collective",
-                category: .networkMarketing,
+                category: .businessNetworking,
                 tagline: "SDRs, AEs, and founders swapping what converts.",
                 description: "A tactical breakfast for people who carry a quota or want to. Each week covers one topic - outbound, discovery, demos, or negotiation - with open Q&A. Coffee and tacos provided.",
                 weekday: 6, hour: 8, minute: 30,
@@ -201,7 +201,7 @@ enum SampleData {
             make(
                 title: "National Referral Exchange (Virtual)",
                 group: "Referral Nation",
-                category: .networkMarketing,
+                category: .businessNetworking,
                 tagline: "Join from anywhere: 60-second intros, real referrals.",
                 description: "Our weekly national call runs like clockwork: 60-second introductions, breakout rooms by industry, and a referral round at the end. Open to all US time zones. Camera on, coffee ready.",
                 weekday: 4, hour: 13, minute: 0,

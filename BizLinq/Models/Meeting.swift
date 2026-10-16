@@ -33,7 +33,6 @@ enum MeetingCategory: String, CaseIterable, Identifiable, Codable, Hashable {
     case realEstate = "Real Estate Meetings"
     case businessNetworking = "Business Networking"
     case technology = "Technology Meetings"
-    case networkMarketing = "Network Marketing"
     case specialEvents = "Special Events"
 
     var id: String { rawValue }
@@ -44,23 +43,22 @@ enum MeetingCategory: String, CaseIterable, Identifiable, Codable, Hashable {
         case .realEstate: return "Real Estate"
         case .businessNetworking: return "Networking"
         case .technology: return "Technology"
-        case .networkMarketing: return "Marketing"
         case .specialEvents: return "Events"
         }
     }
 
     /// Old category names still present in previously imported rows.
     /// Maps them forward so legacy content keeps working.
-    /// "Business Start Ups" was merged into Business Networking.
+    /// "Business Start Ups" and "Network Marketing" were merged into Networking.
     init(fromLegacy rawValue: String) {
         if let exact = MeetingCategory(rawValue: rawValue) {
             self = exact
             return
         }
         switch rawValue {
-        case "Founders & Startups", "Business Start Ups": self = .businessNetworking
+        case "Founders & Startups", "Business Start Ups", "Network Marketing": self = .businessNetworking
         case "Tech & Software": self = .technology
-        case "Sales & Marketing": self = .networkMarketing
+        case "Sales & Marketing": self = .businessNetworking
         default: self = .businessNetworking
         }
     }
@@ -70,7 +68,6 @@ enum MeetingCategory: String, CaseIterable, Identifiable, Codable, Hashable {
         case .realEstate: return "building.2.fill"
         case .businessNetworking: return "person.2.fill"
         case .technology: return "laptopcomputer"
-        case .networkMarketing: return "megaphone.fill"
         case .specialEvents: return "star.fill"
         }
     }
@@ -80,7 +77,6 @@ enum MeetingCategory: String, CaseIterable, Identifiable, Codable, Hashable {
         case .realEstate: return .brown
         case .businessNetworking: return .teal
         case .technology: return .blue
-        case .networkMarketing: return .pink
         case .specialEvents: return .purple
         }
     }
