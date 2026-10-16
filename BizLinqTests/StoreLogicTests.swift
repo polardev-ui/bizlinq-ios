@@ -131,6 +131,19 @@ final class StoreLogicTests: XCTestCase {
         XCTAssertEqual(store.filteredMeetings().map { $0.meeting.title }, ["Tech Mixer"])
     }
 
+    func testWeeklySeriesShowsNextDateOnly() {
+        let store = MeetingStore(meetings: [
+            meeting(title: "Weekly BNI", daysOut: 10),
+            meeting(title: "Weekly BNI", daysOut: 3),
+            meeting(title: "Weekly BNI", daysOut: 17),
+            meeting(title: "Other Mixer", daysOut: 5),
+        ], defaults: testDefaults())
+        store.sortByDistance = false
+        let results = store.filteredMeetings()
+        XCTAssertEqual(results.map { $0.meeting.title }, ["Weekly BNI", "Other Mixer"])
+        XCTAssertEqual(results.first.map { Int(round($0.meeting.startsAt.timeIntervalSinceNow / 86_400)) }, 3)
+    }
+
     func testCostFilterTreatsUnknownAsPaid() {
         var free = meeting(title: "Free one")
         free.costDescription = "Free"
@@ -201,20 +214,25 @@ final class StoreLogicTests: XCTestCase {
 
     // MARK: - Trial decision flow
 
+    /// A post-cutover trial start (14-day terms) and a "now" 15 days later.
+    private let trialStart = TrialStatus.cutoverDate.addingTimeInterval(86_400)
+    private var afterTrial: Date { trialStart.addingTimeInterval(15 * 86_400) }
+
     private func expiredStore() -> MeetingStore {
         let store = MeetingStore(meetings: [], defaults: testDefaults())
-        // Post-cutover start, 15 days ago: past the 14-day trial.
-        store.trialStartDate = Date().addingTimeInterval(-15 * 86_400)
+        store.trialStartDate = trialStart
         return store
     }
 
     func testTrialEndedPromptShowsOnceWhenExpired() {
         let store = expiredStore()
-        XCTAssertTrue(store.shouldShowTrialEnded(subscribed: false))
-        XCTAssertFalse(store.shouldShowTrialEnded(subscribed: true))
+        XCTAssertTrue(store.shouldShowTrialEnded(subscribed: false, now: afterTrial))
+        XCTAssertFalse(store.shouldShowTrialEnded(subscribed: true, now: afterTrial))
+        // Day 13 of 14: still in trial.
+        XCTAssertFalse(store.shouldShowTrialEnded(subscribed: false, now: trialStart.addingTimeInterval(13 * 86_400)))
         store.markTrialEndedPromptSeen()
-        XCTAssertFalse(store.shouldShowTrialEnded(subscribed: false))
-        XCTAssertTrue(store.trialAwaitingDecision(subscribed: false))
+        XCTAssertFalse(store.shouldShowTrialEnded(subscribed: false, now: afterTrial))
+        XCTAssertTrue(store.trialAwaitingDecision(subscribed: false, now: afterTrial))
     }
 
     func testNoPromptDuringActiveTrial() {
@@ -226,9 +244,9 @@ final class StoreLogicTests: XCTestCase {
 
     func testRemindTomorrowComesDueTheNextDay() {
         let store = expiredStore()
-        let now = Date()
+        let now = afterTrial
         store.remindAboutTrialTomorrow(now: now)
-        XCTAssertFalse(store.shouldShowTrialEnded(subscribed: false))
+        XCTAssertFalse(store.shouldShowTrialEnded(subscribed: false, now: now))
         XCTAssertFalse(store.isTrialReminderDue(subscribed: false, now: now.addingTimeInterval(3_600)))
         XCTAssertTrue(store.isTrialReminderDue(subscribed: false, now: now.addingTimeInterval(86_400 + 60)))
         XCTAssertFalse(store.isTrialReminderDue(subscribed: true, now: now.addingTimeInterval(86_400 + 60)))
@@ -236,11 +254,11 @@ final class StoreLogicTests: XCTestCase {
 
     func testJustBrowsingStopsPromptsButKeepsPostingLocked() {
         let store = expiredStore()
-        store.remindAboutTrialTomorrow()
+        store.remindAboutTrialTomorrow(now: afterTrial)
         store.stopHostingAfterTrial()
-        XCTAssertFalse(store.trialAwaitingDecision(subscribed: false))
+        XCTAssertFalse(store.trialAwaitingDecision(subscribed: false, now: afterTrial))
         XCTAssertNil(store.trialReminderDate)
-        XCTAssertEqual(TrialStatus.current(start: store.trialStartDate, now: Date(), subscribed: false), .expired)
+        XCTAssertEqual(TrialStatus.current(start: store.trialStartDate, now: afterTrial, subscribed: false), .expired)
     }
 
     func testSubscribingResolvesTheTrial() {

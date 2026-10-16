@@ -15,6 +15,11 @@ enum ScreenshotPlan {
     case review
     case group
     case paywall
+    case rules
+    case trialEnded
+    case ready
+    /// Full app as a signed-in host whose trial has expired.
+    case trialFlow
 
     static var current: ScreenshotPlan? {
         let args = ProcessInfo.processInfo.arguments
@@ -35,6 +40,10 @@ enum ScreenshotPlan {
         case "review": return .review
         case "group": return .group
         case "paywall": return .paywall
+        case "rules": return .rules
+        case "trialEnded": return .trialEnded
+        case "ready": return .ready
+        case "trialFlow": return .trialFlow
         default: return nil
         }
     }
@@ -52,7 +61,7 @@ enum ScreenshotPlan {
         case .browse, .filters, .detail: return 0
         case .meetings: return 1
         case .host, .post: return 2
-        case .review, .group, .paywall: return 0
+        case .review, .group, .paywall, .rules, .trialEnded, .ready, .trialFlow: return 0
         }
     }
 }
@@ -114,6 +123,15 @@ struct ScreenshotHost: View {
                 PaywallView()
                     .environmentObject(subscriptions)
             }
+        case .rules:
+            HostRulesView(onAccept: {}, onNotNow: {})
+        case .trialEnded:
+            TrialEndedView(onPlans: {}, onBrowse: {}, onRemind: {})
+        case .ready:
+            ReadyToMoveForwardView(onPlans: {}, onKeepBrowsing: {}, onStopReminders: {})
+        case .trialFlow:
+            ContentView(initialTab: 0)
+                .trialPrompts()
         }
     }
 
@@ -135,8 +153,23 @@ struct ScreenshotHost: View {
             auth.userID = UUID()
             store.auth = auth
             store.myMeetingIDs = Set(samples.prefix(3).map { $0.id })
-        case .review, .group:
+        case .review, .group, .rules, .trialEnded, .ready:
             break
+        case .trialFlow:
+            auth.userID = UUID()
+            store.auth = auth
+            store.searchZip = ScreenshotPlan.zip
+            Task { await store.resolveZip() }
+            if ProcessInfo.processInfo.arguments.contains("-resetTrialFlow") {
+                for key in ["bizlinq.trialEndedPromptSeen", "bizlinq.trialDecisionReminder", "bizlinq.trialDeclined"] {
+                    UserDefaults.standard.removeObject(forKey: key)
+                }
+                store.trialEndedPromptSeen = false
+                store.trialReminderDate = nil
+                store.trialDeclined = false
+            }
+            // 40 days ago: past even the legacy 30-day terms.
+            store.trialStartDate = Date().addingTimeInterval(-40 * 86_400)
         case .paywall:
             auth.userID = UUID()
             store.auth = auth

@@ -4,7 +4,7 @@ iOS SwiftUI app for discovering business networking meetings across the US.
 
 **Business rules:**
 - Free to view and join. Costs money to post ($10/mo or $99/yr via In-App Purchase).
-- Posters can publish **1 meeting every 7 days** — enforced by Postgres RLS, mirrored in-app.
+- 14-day free posting trial, then a plan is required to post — enforced by Postgres RLS, mirrored in-app.
 - Users enter a **ZIP code + driving radius** (5–100 mi, or Nationwide).
 
 ## Run it
@@ -35,9 +35,25 @@ No backend SDK: the app talks to Supabase Auth + PostgREST over `URLSession`, so
 Tables `profiles`, `meetings`, `rsvps`, `reports` with RLS (see migrations in the Supabase dashboard). Key rules:
 
 - Anyone (anon included) can read live upcoming meetings and RSVP rows.
-- Only the host's authenticated user can insert/update/delete their meetings, and inserts require `can_post(auth.uid())` (nothing posted in the last 7 days).
+- Only the host's authenticated user can insert/update/delete their meetings; inserts and edits require `can_post(auth.uid())` (trial running or verified subscription). Cancelling is always allowed.
 - RSVP rows belong to their author; a trigger maintains `meetings.attendee_count`.
 - Reports are insert-only for authenticated users; review them in the dashboard.
+
+## Posting trial (enforced server-side)
+
+- A host's first post starts a **14-day free posting trial** (trials begun before 2026-10-17 keep 30 days). Before that first post, hosts accept the **host rules** once (full-screen, `HostRules` in `Stores/Trial.swift`; also stored as `profiles.host_rules_accepted_at`).
+- After day 14 without a plan, `TrialEndedView` appears once: **View plans**, **I'll just browse** (stops prompts), or **Remind me tomorrow** — a local notification at the same time the next day. Tapping it opens **Ready to move forward?** (`ReadyToMoveForwardView`); "Keep browsing" schedules the next day's reminder again. All in `Views/HostTrialViews.swift`.
+- Existing listings stay live after the trial; only new posts and edits are locked.
+- The database enforces it: `can_post()` checks `poster_trials` (not user-writable) and `poster_entitlements`, which only the `verify-subscription` edge function writes after checking Apple's JWS signature. See `supabase/migrations/20261017000000_trial_enforcement.sql`.
+- Tests: `deno test -A supabase/functions/verify-subscription/` and `deno run -A supabase/tests/migrations_test.ts .`
+
+## Weekly listings
+
+Weekly groups are short runs of dated rows (`recurrence = 'weekly'`). `roll_weekly_meetings()` (pg_cron, daily 09:30 UTC) replaces each passed date with the next one after the series' latest, in local time. The old edge-function roll never ran (cron disabled; it also collided with `source_url`).
+
+## Lake Nona hunt (October 2026)
+
+`tools/lake_nona_import.py` builds `tools/seed_lake_nona.sql` (+ `tools/lake_nona_report.csv`) from hand-checked Lake Nona listings (Chamber, Rotary, Toastmasters, BNI, Crema at Nona, St. Cloud Chamber) plus Eventbrite/Meetup imports within 15 miles of 32827/32832.
 
 ## Screenshots (App Store)
 

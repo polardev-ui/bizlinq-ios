@@ -1,6 +1,6 @@
 // supabase/functions/sync-meetings/index.ts
 // Weekly curator: re-syncs watched Meetup groups, expires past one-offs,
-// rolls weekly recurrings forward, logs every run to public.sync_runs.
+// logs every run to public.sync_runs. (Weekly recurrings roll in SQL.)
 //
 // Trigger: pg_cron every Monday 06:00 UTC, or POST {"limit_groups": N}.
 // Auth: called with the anon key (JWT verification only); all writes use
@@ -247,22 +247,8 @@ Deno.serve(async (req) => {
       .eq("status", "live").is("recurrence", null)
       .lt("starts_at", new Date(Date.now() - 2 * 3600_000).toISOString());
     expired = expCount ?? 0;
-    // Roll weekly recurrings forward.
-    const { data: stale } = await supabase.from("meetings")
-      .select("*").eq("status", "live").eq("recurrence", "weekly")
-      .lt("starts_at", new Date().toISOString()).limit(50);
-    for (const m of stale ?? []) {
-      const next = { ...m };
-      delete next.id; delete next.createdAt;
-      delete next.created_at;
-      next.starts_at = new Date(new Date(m.starts_at).getTime() + 7 * 86400_000).toISOString();
-      next.last_verified_at = new Date().toISOString();
-      const { error: insErr } = await supabase.from("meetings").insert(next);
-      if (!insErr) {
-        await supabase.from("meetings").update({ status: "expired" }).eq("id", m.id);
-        inserted++;
-      }
-    }
+    // Weekly recurrings are rolled forward by public.roll_weekly_meetings()
+    // (pg_cron, daily). See supabase/migrations/20261017000200_roll_weekly_meetings.sql.
   } catch (e) {
     error = String(e).slice(0, 300);
   }

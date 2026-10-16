@@ -234,6 +234,10 @@ struct PostMeetingView: View {
         Task { @MainActor in
             let hostName = draft.contactName.trimmingCharacters(in: .whitespaces)
             let meeting = draft.buildMeeting(place: place, hostName: hostName.isEmpty ? "Host" : hostName)
+            if subscriptions.isPosterActive {
+                // Make sure the server has the verified plan before it checks can_post.
+                await subscriptions.resyncWithServer()
+            }
             do {
                 try await store.publish(meeting)
                 postedTitle = meeting.title

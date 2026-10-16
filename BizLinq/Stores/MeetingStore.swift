@@ -449,7 +449,14 @@ final class MeetingStore: ObservableObject {
         } else {
             out.sort { $0.meeting.startsAt < $1.meeting.startsAt }
         }
-        return out
+        // A weekly group is stored as one row per date; list only its next
+        // date so one series can't fill the top of the list. The group
+        // profile still shows every upcoming date.
+        var seen = Set<String>()
+        return out.filter { ranked in
+            let m = ranked.meeting
+            return seen.insert("\(m.title)|\(m.groupName)|\(m.isVirtual ? "online" : m.address)").inserted
+        }
     }
 
     /// Live upcoming counts per category, respecting the current search,
