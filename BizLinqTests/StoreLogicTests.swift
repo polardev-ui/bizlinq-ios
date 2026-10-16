@@ -198,4 +198,77 @@ final class StoreLogicTests: XCTestCase {
         XCTAssertFalse(store.hasRSVPd(first))
         XCTAssertEqual(store.meetings.first?.attendeeCount, 5)
     }
+
+    // MARK: - Trial decision flow
+
+    private func expiredStore() -> MeetingStore {
+        let store = MeetingStore(meetings: [], defaults: testDefaults())
+        // Post-cutover start, 15 days ago: past the 14-day trial.
+        store.trialStartDate = Date().addingTimeInterval(-15 * 86_400)
+        return store
+    }
+
+    func testTrialEndedPromptShowsOnceWhenExpired() {
+        let store = expiredStore()
+        XCTAssertTrue(store.shouldShowTrialEnded(subscribed: false))
+        XCTAssertFalse(store.shouldShowTrialEnded(subscribed: true))
+        store.markTrialEndedPromptSeen()
+        XCTAssertFalse(store.shouldShowTrialEnded(subscribed: false))
+        XCTAssertTrue(store.trialAwaitingDecision(subscribed: false))
+    }
+
+    func testNoPromptDuringActiveTrial() {
+        let store = MeetingStore(meetings: [], defaults: testDefaults())
+        store.trialStartDate = Date().addingTimeInterval(-3 * 86_400)
+        XCTAssertFalse(store.trialAwaitingDecision(subscribed: false))
+        XCTAssertFalse(store.shouldShowTrialEnded(subscribed: false))
+    }
+
+    func testRemindTomorrowComesDueTheNextDay() {
+        let store = expiredStore()
+        let now = Date()
+        store.remindAboutTrialTomorrow(now: now)
+        XCTAssertFalse(store.shouldShowTrialEnded(subscribed: false))
+        XCTAssertFalse(store.isTrialReminderDue(subscribed: false, now: now.addingTimeInterval(3_600)))
+        XCTAssertTrue(store.isTrialReminderDue(subscribed: false, now: now.addingTimeInterval(86_400 + 60)))
+        XCTAssertFalse(store.isTrialReminderDue(subscribed: true, now: now.addingTimeInterval(86_400 + 60)))
+    }
+
+    func testJustBrowsingStopsPromptsButKeepsPostingLocked() {
+        let store = expiredStore()
+        store.remindAboutTrialTomorrow()
+        store.stopHostingAfterTrial()
+        XCTAssertFalse(store.trialAwaitingDecision(subscribed: false))
+        XCTAssertNil(store.trialReminderDate)
+        XCTAssertEqual(TrialStatus.current(start: store.trialStartDate, now: Date(), subscribed: false), .expired)
+    }
+
+    func testSubscribingResolvesTheTrial() {
+        let store = expiredStore()
+        store.stopHostingAfterTrial()
+        store.trialResolvedBySubscription()
+        XCTAssertFalse(store.trialDeclined)
+        XCTAssertNil(store.trialReminderDate)
+    }
+
+    func testSameTimeTomorrowKeepsWallClock() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        // 2026-11-01 is a DST change in New York: still the same clock time.
+        let start = calendar.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 18, minute: 45))!
+        let next = TrialNotifications.sameTimeTomorrow(from: start, calendar: calendar)
+        let parts = calendar.dateComponents([.day, .hour, .minute], from: next)
+        XCTAssertEqual(parts.day, 1)
+        XCTAssertEqual(parts.hour, 18)
+        XCTAssertEqual(parts.minute, 45)
+    }
+
+    func testHostRulesPersistPerAccount() {
+        let defaults = testDefaults()
+        let store = MeetingStore(meetings: [], defaults: defaults)
+        XCTAssertFalse(store.hostRulesAccepted)
+        store.acceptHostRules()
+        XCTAssertTrue(store.hostRulesAccepted)
+        XCTAssertTrue(defaults.bool(forKey: HostRules.defaultsKey(for: nil)))
+    }
 }

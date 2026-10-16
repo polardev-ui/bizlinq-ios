@@ -14,58 +14,59 @@ struct ZipSearchSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Location") {
-                    TextField("ZIP code", text: $zip)
-                        .keyboardType(.numberPad)
-                        .textContentType(.postalCode)
-                        .onChange(of: zip) { _, newValue in
-                            zip = String(newValue.filter { $0.isNumber }.prefix(5))
-                        }
-                }
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Text("Search area")
+                    .font(.title3.bold())
+                    .foregroundStyle(BizStyle.ink)
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .tint(BizStyle.teal)
+            }
+            .padding(.top, 20)
 
-                Section("Driving radius") {
-                    Picker("Radius", selection: $radius) {
-                        ForEach(SearchRadius.allCases) { option in
-                            Text(option.label).tag(option)
-                        }
+            HStack(spacing: 8) {
+                Image(systemName: "mappin.and.ellipse")
+                    .foregroundStyle(BizStyle.teal)
+                TextField("ZIP code", text: $zip)
+                    .keyboardType(.numberPad)
+                    .textContentType(.postalCode)
+                    .onChange(of: zip) { _, newValue in
+                        let digits = String(newValue.filter { $0.isNumber }.prefix(5))
+                        if digits != newValue { zip = digits }
                     }
-                    .pickerStyle(.segmented)
-                    Text("Virtual events always show, no matter the radius.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 48)
+            .background(BizStyle.field, in: RoundedRectangle(cornerRadius: BizStyle.controlRadius, style: .continuous))
 
-                Section {
-                    Button {
-                        save()
-                    } label: {
-                        if isSaving {
-                            ProgressView()
-                        } else {
-                            Text("Update search")
-                        }
-                    }
-                    .disabled(!isValid || isSaving)
-                }
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Driving radius")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(BizStyle.ink)
+                RadiusChips(selection: $radius)
+                Text("Virtual events always show, no matter the radius.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .navigationTitle("Search area")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
+
+            Spacer(minLength: 0)
+
+            BizPrimaryButton(title: "Update search", isBusy: isSaving, enabled: isValid || radius == .nationwide) {
+                save()
             }
-            .onAppear {
-                zip = store.searchZip
-                radius = store.radius
-            }
+            .padding(.bottom, 8)
+        }
+        .padding(.horizontal, 20)
+        .background(BizStyle.canvas)
+        .onAppear {
+            zip = store.searchZip
+            radius = store.radius
         }
     }
 
     private func save() {
-        guard isValid else { return }
+        guard isValid || radius == .nationwide else { return }
         isSaving = true
         Task { @MainActor in
             await store.updateLocation(zip: zip, radius: radius)

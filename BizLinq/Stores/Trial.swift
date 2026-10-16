@@ -78,6 +78,9 @@ enum TrialNotifications {
             let trigger = UNTimeIntervalNotificationTrigger(
                 timeInterval: max(60, fire.timeIntervalSinceNow), repeats: false
             )
+            if daysLeft == 0 {
+                content.userInfo = [AppRouter.routeKey: AppRouter.Route.trialDecision.rawValue]
+            }
             let request = UNNotificationRequest(
                 identifier: "bizlinq.trial-day\(daysLeft)", content: content, trigger: trigger
             )
@@ -87,5 +90,106 @@ enum TrialNotifications {
 
     static func cancelTrialReminders() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids())
+        cancelDecisionReminder()
+    }
+
+    // MARK: Post-trial "remind me tomorrow"
+
+    static let decisionID = "bizlinq.trial-decision"
+
+    /// Same wall-clock time tomorrow, in the user's current calendar.
+    static func sameTimeTomorrow(from now: Date = Date(), calendar: Calendar = .current) -> Date {
+        calendar.date(byAdding: .day, value: 1, to: now) ?? now.addingTimeInterval(86_400)
+    }
+
+    /// One reminder at `date`; tapping it opens "Ready to move forward?".
+    static func scheduleDecisionReminder(at date: Date) {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [decisionID])
+        let content = UNMutableNotificationContent()
+        content.title = "Ready to keep hosting?"
+        content.body = "Your BizLinq trial has ended. Pick a plan to post your next meeting — or keep browsing for free."
+        content.sound = .default
+        content.userInfo = [AppRouter.routeKey: AppRouter.Route.trialDecision.rawValue]
+        let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
+        center.add(UNNotificationRequest(identifier: decisionID, content: content, trigger: trigger))
+    }
+
+    static func cancelDecisionReminder() {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [decisionID])
+        center.removeDeliveredNotifications(withIdentifiers: [decisionID])
+    }
+}
+
+/// Routes notification taps into the UI.
+@MainActor
+final class AppRouter: ObservableObject {
+    static let shared = AppRouter()
+    nonisolated static let routeKey = "route"
+
+    enum Route: String {
+        case trialDecision
+    }
+
+    /// Set when the user taps a trial reminder; the root view presents
+    /// "Ready to move forward?" and clears it.
+    @Published var pendingRoute: Route?
+}
+
+/// Receives notification taps (including cold launches) and banners while
+/// the app is open.
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationDelegate()
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        let raw = response.notification.request.content.userInfo[AppRouter.routeKey] as? String
+        guard let raw, let route = AppRouter.Route(rawValue: raw) else { return }
+        await MainActor.run { AppRouter.shared.pendingRoute = route }
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+}
+
+/// The rules every host agrees to before their first post.
+enum HostRules {
+    /// Bump when the rules change materially to ask everyone again.
+    static let version = 1
+
+    struct Rule: Identifiable {
+        let icon: String
+        let title: String
+        let detail: String
+        var id: String { title }
+    }
+
+    static let rules: [Rule] = [
+        Rule(icon: "checkmark.seal", title: "Real meetings only",
+             detail: "List genuine business networking events that you host or are authorized to promote."),
+        Rule(icon: "calendar.badge.clock", title: "Keep details accurate",
+             detail: "Date, time, place, and format must be correct. Edit or cancel the listing if plans change."),
+        Rule(icon: "tag", title: "Be upfront about cost",
+             detail: "Show any attendance fee. Attendees pay you directly; BizLinq never collects event fees."),
+        Rule(icon: "hand.raised", title: "Keep it professional",
+             detail: "No spam, misleading claims, harassment, discrimination, or illegal activity."),
+        Rule(icon: "lock.shield", title: "Respect attendees' privacy",
+             detail: "Use contact details only for your event. Never sell or share them."),
+        Rule(icon: "clock.badge.checkmark", title: "14-day free trial, then a plan",
+             detail: "Your first post starts a 14-day free posting trial. After that, a paid plan is required to post. Browsing and RSVPs stay free."),
+        Rule(icon: "flag", title: "We review reports",
+             detail: "Listings that break these rules may be removed, and repeat issues can end posting access."),
+    ]
+
+    static func defaultsKey(for user: UUID?) -> String {
+        "bizlinq.hostRulesAccepted.v\(version).\(user?.uuidString ?? "guest")"
     }
 }

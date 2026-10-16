@@ -56,6 +56,14 @@ final class SubscriptionManager: ObservableObject {
     /// Next renewal date of the active subscription, if known.
     @Published private(set) var subscriptionExpiry: Date?
 
+    /// Signed-in BizLinq user, stamped onto purchases as the App Store
+    /// `appAccountToken` so the server can bind a subscription to one account.
+    var accountToken: (() -> UUID?)?
+    /// Forwards the active transaction's signed JWS to the server, which
+    /// verifies it and unlocks posting (`can_post`). Set by the app.
+    var syncToServer: ((String) async -> Void)?
+    private var lastSyncedJWS: String?
+
     init() {
         entitledProductID = UserDefaults.standard.string(forKey: Keys.entitledProduct)
         let stamp = UserDefaults.standard.double(forKey: Keys.expiry)
@@ -114,7 +122,11 @@ final class SubscriptionManager: ObservableObject {
         isPurchasing = true
         defer { isPurchasing = false }
         do {
-            let result = try await product.purchase()
+            var options: Set<Product.PurchaseOption> = []
+            if let token = accountToken?() {
+                options.insert(.appAccountToken(token))
+            }
+            let result = try await product.purchase(options: options)
             switch result {
             case .success(let verification):
                 switch verification {
@@ -136,9 +148,16 @@ final class SubscriptionManager: ObservableObject {
         }
     }
 
+    /// Re-sends the current entitlement (e.g. right after sign-in).
+    func resyncWithServer() async {
+        lastSyncedJWS = nil
+        await refreshEntitlements()
+    }
+
     func refreshEntitlements() async {
         var entitled: String?
         var expiry: Date?
+        var jws: String?
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
             guard transaction.revocationDate == nil else { continue }
@@ -146,7 +165,12 @@ final class SubscriptionManager: ObservableObject {
             if let expires = transaction.expirationDate, expires <= Date() { continue }
             entitled = transaction.productID
             expiry = transaction.expirationDate
+            jws = result.jwsRepresentation
             break
+        }
+        if let jws, jws != lastSyncedJWS, let syncToServer {
+            lastSyncedJWS = jws
+            await syncToServer(jws)
         }
         entitledProductID = entitled
         subscriptionExpiry = expiry

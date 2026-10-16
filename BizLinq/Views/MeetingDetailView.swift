@@ -1,4 +1,3 @@
-import MapKit
 import SwiftUI
 
 /// Screen 3 — Meeting details. Cost is visible before the RSVP action:
@@ -10,7 +9,6 @@ struct MeetingDetailView: View {
     @EnvironmentObject private var auth: AuthManager
     let ranked: RankedMeeting
 
-    @State private var position: MapCameraPosition
     @State private var showingPaywall = false
     @State private var showingSignIn = false
     @State private var rsvpError: String?
@@ -19,15 +17,6 @@ struct MeetingDetailView: View {
     @State private var reportDone = false
     @State private var confirmingBlock = false
     @Environment(\.dismiss) private var dismiss
-
-    init(ranked: RankedMeeting) {
-        self.ranked = ranked
-        let center = ranked.meeting.coordinate
-        _position = State(initialValue: .region(MKCoordinateRegion(
-            center: center,
-            span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
-        )))
-    }
 
     private var meeting: Meeting { ranked.meeting }
 
@@ -38,144 +27,87 @@ struct MeetingDetailView: View {
 
     private var rsvpd: Bool { store.hasRSVPd(meeting) }
 
+    private let heroHeight: CGFloat = 260
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 8) {
-                    Text(meeting.category.rawValue.uppercased())
-                        .font(.caption2.bold())
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(BizStyle.teal.opacity(0.12))
-                        .foregroundStyle(BizStyle.teal)
-                        .clipShape(Capsule())
-                    if meeting.isVirtual {
-                        Text("ONLINE")
-                            .font(.caption2.bold())
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color.blue.opacity(0.12))
-                            .foregroundStyle(.blue)
-                            .clipShape(Capsule())
+            VStack(alignment: .leading, spacing: 0) {
+                hero
+                VStack(alignment: .leading, spacing: 20) {
+                    titleBlock
+                    metaBlock
+                    if !meeting.isVirtual {
+                        BizMapCard(title: meeting.venue, coordinate: meeting.coordinate)
                     }
-                    BizCostBadge(meeting: meeting)
-                }
+                    NavigationLink {
+                        GroupProfileView(groupName: meeting.groupName)
+                    } label: {
+                        BizHostRow(
+                            hostName: meeting.hostName.isEmpty ? meeting.groupName : meeting.hostName,
+                            subtitle: "Organizer · \(meeting.groupName)"
+                        )
+                        .padding(14)
+                        .bizCard()
+                    }
+                    .buttonStyle(BizPressStyle())
+                    .accessibilityLabel("Hosted by \(meeting.hostName). View group profile for \(meeting.groupName)")
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(meeting.title)
-                        .font(.title.bold())
-                        .foregroundStyle(BizStyle.ink)
-                        .accessibilityAddTraits(.isHeader)
-                    if !meeting.audienceLine.isEmpty {
-                        Text(meeting.audienceLine)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("About this meeting")
                             .font(.headline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                VStack(spacing: 12) {
-                    BizMetaRow(
-                        icon: "calendar",
-                        title: Formatters.fullWithZone.string(from: meeting.startsAt),
-                        detail: "Local time on your device"
-                    )
-                    if meeting.isVirtual {
-                        BizMetaRow(
-                            icon: "video.fill",
-                            title: "Online event",
-                            detail: "Check the event page for access instructions."
-                        )
-                    } else {
-                        BizMetaRow(
-                            icon: "mappin.circle.fill",
-                            title: meeting.venue,
-                            detail: "\(meeting.address), \(meeting.city), \(meeting.state) \(meeting.zipCode)"
-                        )
-                    }
-                    if !meeting.isVirtual, let text = store.distanceText(for: meeting) {
-                        BizMetaRow(icon: "car.fill", title: text, detail: "Straight-line distance")
-                    }
-                    BizMetaRow(
-                        icon: "ticket.fill",
-                        title: meeting.isFreeEntry ? "Free entry" : "Entry: \(meeting.costBadgeText)",
-                        detail: meeting.isFreeEntry
-                            ? "No attendance fee listed."
-                            : "Pay the host directly — BizLinq never charges attendees."
-                    )
-                    BizMetaRow(
-                        icon: "person.2.fill",
-                        title: live.spotsLeftText ?? "\(live.attendeeCount) going",
-                        detail: "RSVPs show interest, not guaranteed attendance."
-                    )
-                }
-                .padding(14)
-                .background(Color(.systemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: BizStyle.cardRadius))
-                .overlay(
-                    RoundedRectangle(cornerRadius: BizStyle.cardRadius)
-                        .stroke(BizStyle.hairline, lineWidth: 1)
-                )
-
-                if !meeting.isVirtual {
-                    Map(position: $position) {
-                        Marker(meeting.venue, coordinate: meeting.coordinate)
-                    }
-                    .frame(height: 200)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .accessibilityLabel("Map showing \(meeting.venue)")
-                }
-
-                BizGroupHeader(
-                    groupName: meeting.groupName,
-                    tagline: meeting.audienceLine,
-                    hostName: meeting.hostName
-                )
-
-                NavigationLink {
-                    GroupProfileView(groupName: meeting.groupName)
-                } label: {
-                    HStack {
-                        Text("View group profile").fontWeight(.semibold)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                    }
-                    .foregroundStyle(BizStyle.teal)
-                    .padding(14)
-                    .background(BizStyle.teal.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("View group profile for \(meeting.groupName)")
-
-                Text("About this meeting")
-                    .font(.headline)
-                    .foregroundStyle(BizStyle.ink)
-                Text(meeting.description)
-                    .font(.body)
-
-                if let source = meeting.source {
-                    Label("Curated listing · sourced from \(source)", systemImage: "checkmark.seal.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if let urlString = meeting.sourceURL, let url = URL(string: urlString),
-                   urlString.hasPrefix("http") {
-                    Link(destination: url) {
-                        Label("More info on the event page", systemImage: "safari")
+                            .foregroundStyle(BizStyle.ink)
+                        Text(meeting.description)
                             .font(.subheadline)
-                            .foregroundStyle(BizStyle.teal)
+                            .foregroundStyle(BizStyle.ink.opacity(0.8))
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(.vertical, 2)
+
+                    if meeting.source != nil || meeting.sourceURL != nil {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let source = meeting.source {
+                                Label("Curated listing · sourced from \(source)", systemImage: "checkmark.seal.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let urlString = meeting.sourceURL, let url = URL(string: urlString),
+                               urlString.hasPrefix("http") {
+                                Link(destination: url) {
+                                    Label("More info on the event page", systemImage: "arrow.up.right.square")
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(BizStyle.teal)
+                                }
+                            }
+                        }
+                    }
+
+                    NavigationLink {
+                        GroupProfileView(groupName: meeting.groupName)
+                    } label: {
+                        Text("View group profile")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(BizStyle.teal)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, BizStyle.gutter)
+                .padding(.top, 18)
+                .padding(.bottom, 24)
+                .background(BizStyle.canvas)
             }
-            .padding(BizStyle.gutter)
-            .padding(.bottom, 170)
         }
-        .background(Color(.systemGroupedBackground))
-        .navigationTitle("Details")
+        .ignoresSafeArea(edges: .top)
+        .background(BizStyle.canvas)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .primaryAction) {
+                BizSaveButton(meetingID: meeting.id, onImage: false)
+                ShareLink(item: shareText) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Share meeting")
                 Menu {
                     Button {
                         if auth.userID == nil {
@@ -194,43 +126,16 @@ struct MeetingDetailView: View {
                         }
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: "ellipsis")
                 }
                 .accessibilityLabel("Meeting options")
             }
         }
+        .tint(BizStyle.teal)
         .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 8) {
-                BizPrimaryButton(
-                    title: rsvpd ? "RSVP confirmed — tap to undo"
-                        : (meeting.isFreeEntry ? "RSVP for free" : "RSVP"),
-                    isBusy: false
-                ) {
-                    if auth.userID == nil {
-                        showingSignIn = true
-                    } else {
-                        Task {
-                            do {
-                                try await store.toggleRSVP(for: meeting)
-                            } catch {
-                                rsvpError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                            }
-                        }
-                    }
-                }
-                ShareLink(item: shareText) {
-                    Label("Share this meeting", systemImage: "square.and.arrow.up")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                }
-                .buttonStyle(.bordered)
-                .tint(BizStyle.teal)
-            }
-            .padding(.horizontal, BizStyle.gutter)
-            .padding(.vertical, 8)
-            .background(.bar)
+            rsvpBar
         }
+        .sensoryFeedback(.success, trigger: rsvpd) { _, new in new }
         .sheet(isPresented: $showingPaywall) {
             NavigationStack {
                 PaywallView()
@@ -305,6 +210,125 @@ struct MeetingDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("You'll no longer see meetings from this host.")
+        }
+    }
+
+    /// Cover with a stretchy pull-down effect.
+    private var hero: some View {
+        GeometryReader { geo in
+            let pull = max(0, geo.frame(in: .scrollView).minY)
+            BizCover(seed: meeting.groupName, category: meeting.category)
+                .frame(width: geo.size.width, height: heroHeight + pull)
+                .clipped()
+                .overlay(alignment: .top) {
+                    // Keeps toolbar buttons legible over bright skies.
+                    LinearGradient(colors: [.black.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 110)
+                }
+                .offset(y: -pull)
+        }
+        .frame(height: heroHeight)
+    }
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(meeting.category.rawValue.uppercased())
+                .font(.caption.weight(.semibold))
+                .tracking(0.6)
+                .foregroundStyle(BizStyle.teal)
+            Text(meeting.title)
+                .font(.title2.bold())
+                .foregroundStyle(BizStyle.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            if !meeting.audienceLine.isEmpty {
+                Text(meeting.audienceLine)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .bizAppear(index: 1)
+    }
+
+    private var metaBlock: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            BizMetaRow(
+                icon: "calendar",
+                title: Formatters.fullWithZone.string(from: meeting.startsAt),
+                detail: "Local time on your device"
+            )
+            if meeting.isVirtual {
+                BizMetaRow(
+                    icon: "video",
+                    title: "Online event",
+                    detail: "Check the event page for access instructions."
+                )
+            } else {
+                BizMetaRow(
+                    icon: "mappin.and.ellipse",
+                    title: meeting.venue,
+                    detail: [
+                        "\(meeting.address), \(meeting.city), \(meeting.state) \(meeting.zipCode)",
+                        store.distanceText(for: meeting)
+                    ].compactMap { $0 }.joined(separator: "\n")
+                )
+            }
+            HStack(spacing: 8) {
+                BizTag(
+                    text: meeting.isFreeEntry ? "Free to attend" : "\(meeting.costBadgeText) to attend",
+                    systemImage: "tag"
+                )
+                if let spots = live.spotsLeftText {
+                    BizTag(text: spots, systemImage: "person.2")
+                } else if live.attendeeCount > 0 {
+                    BizTag(text: "\(live.attendeeCount) going", systemImage: "person.2")
+                        .contentTransition(.numericText())
+                }
+            }
+            if !meeting.isFreeEntry {
+                Text("Pay the host directly — BizLinq never charges attendees.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .bizAppear(index: 2)
+    }
+
+    private var rsvpBar: some View {
+        VStack {
+            Group {
+                if rsvpd {
+                    BizSecondaryButton(title: "You're going", systemImage: "checkmark.circle.fill") {
+                        toggleRSVP()
+                    }
+                    .accessibilityHint("Double tap to cancel your RSVP")
+                } else {
+                    BizPrimaryButton(title: meeting.isFreeEntry ? "RSVP for free" : "RSVP · \(meeting.costBadgeText)") {
+                        toggleRSVP()
+                    }
+                }
+            }
+            .transition(.opacity.combined(with: .scale(scale: 0.97)))
+        }
+        .animation(BizStyle.spring, value: rsvpd)
+        .padding(.horizontal, BizStyle.gutter)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
+        .background(.bar)
+    }
+
+    private func toggleRSVP() {
+        if auth.userID == nil {
+            showingSignIn = true
+            return
+        }
+        Task {
+            do {
+                try await store.toggleRSVP(for: meeting)
+            } catch {
+                rsvpError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
         }
     }
 

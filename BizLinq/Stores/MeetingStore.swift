@@ -45,6 +45,8 @@ final class MeetingStore: ObservableObject {
         static let blocked = "bizlinq.blockedHostIDs"
         static let trialStart = "bizlinq.trialStartDate"
         static let trialDeclined = "bizlinq.trialDeclined"
+        static let trialPromptSeen = "bizlinq.trialEndedPromptSeen"
+        static let trialReminder = "bizlinq.trialDecisionReminder"
     }
 
     @Published var meetings: [Meeting] = []
@@ -68,6 +70,12 @@ final class MeetingStore: ObservableObject {
     /// Start of the 14-day posting trial (server-stamped, cached locally).
     @Published var trialStartDate: Date? = nil
     @Published var trialDeclined: Bool = false
+    /// The full-screen "trial ended" prompt has been answered once.
+    @Published var trialEndedPromptSeen: Bool = false
+    /// When the next "Ready to move forward?" check-in is due.
+    @Published var trialReminderDate: Date? = nil
+    /// The signed-in host has agreed to the posting rules.
+    @Published var hostRulesAccepted: Bool = false
 
     /// Nil in tests, screenshots, and offline mode: the store then behaves
     /// exactly like the original local-only prototype.
@@ -95,6 +103,11 @@ final class MeetingStore: ObservableObject {
             trialStartDate = Date(timeIntervalSince1970: trialStamp)
         }
         trialDeclined = defaults.bool(forKey: Keys.trialDeclined)
+        trialEndedPromptSeen = defaults.bool(forKey: Keys.trialPromptSeen)
+        let reminderStamp = defaults.double(forKey: Keys.trialReminder)
+        if reminderStamp > 0 {
+            trialReminderDate = Date(timeIntervalSince1970: reminderStamp)
+        }
         if !searchZip.isEmpty {
             Task { await resolveZip() }
         }
@@ -147,6 +160,82 @@ final class MeetingStore: ObservableObject {
     func setTrialDeclined(_ declined: Bool) {
         trialDeclined = declined
         defaults.set(declined, forKey: Keys.trialDeclined)
+    }
+
+    // MARK: - Trial decision (after day 14)
+
+    /// Trial is over, no plan, and the host hasn't opted out of hosting.
+    func trialAwaitingDecision(subscribed: Bool, now: Date = Date()) -> Bool {
+        guard auth?.userID != nil || backend == nil else { return false }
+        let status = TrialStatus.current(start: trialStartDate, now: now, subscribed: subscribed)
+        return status == .expired && !subscribed && !trialDeclined
+    }
+
+    /// First time the expired trial is noticed: show "trial ended".
+    func shouldShowTrialEnded(subscribed: Bool, now: Date = Date()) -> Bool {
+        trialAwaitingDecision(subscribed: subscribed, now: now) && !trialEndedPromptSeen
+    }
+
+    /// A "remind me tomorrow" is due (covers users who disabled notifications).
+    func isTrialReminderDue(subscribed: Bool, now: Date = Date()) -> Bool {
+        guard trialAwaitingDecision(subscribed: subscribed, now: now), let due = trialReminderDate else { return false }
+        return due <= now
+    }
+
+    /// "Remind me tomorrow": local notification at this time tomorrow.
+    func remindAboutTrialTomorrow(now: Date = Date()) {
+        let due = TrialNotifications.sameTimeTomorrow(from: now)
+        markTrialEndedPromptSeen()
+        trialReminderDate = due
+        defaults.set(due.timeIntervalSince1970, forKey: Keys.trialReminder)
+        TrialNotifications.scheduleDecisionReminder(at: due)
+        Task { _ = await TrialNotifications.requestPermission() }
+    }
+
+    /// "Just browse": stop hosting prompts. Reversible from the Host tab.
+    func stopHostingAfterTrial() {
+        markTrialEndedPromptSeen()
+        clearTrialReminder()
+        setTrialDeclined(true)
+    }
+
+    /// Subscribed: the decision is made.
+    func trialResolvedBySubscription() {
+        markTrialEndedPromptSeen()
+        clearTrialReminder()
+        setTrialDeclined(false)
+        TrialNotifications.cancelTrialReminders()
+    }
+
+    func markTrialEndedPromptSeen() {
+        trialEndedPromptSeen = true
+        defaults.set(true, forKey: Keys.trialPromptSeen)
+    }
+
+    private func clearTrialReminder() {
+        trialReminderDate = nil
+        defaults.removeObject(forKey: Keys.trialReminder)
+        TrialNotifications.cancelDecisionReminder()
+    }
+
+    // MARK: - Host rules
+
+    /// Loads the local flag, then the server's record (survives reinstalls).
+    func refreshHostRules() async {
+        let key = HostRules.defaultsKey(for: auth?.userID)
+        hostRulesAccepted = defaults.bool(forKey: key)
+        guard !hostRulesAccepted, let backend, let uid = auth?.userID else { return }
+        if let profile = try? await backend.fetchProfile(userID: uid), profile.hostRulesAcceptedAt != nil {
+            hostRulesAccepted = true
+            defaults.set(true, forKey: key)
+        }
+    }
+
+    func acceptHostRules() {
+        hostRulesAccepted = true
+        defaults.set(true, forKey: HostRules.defaultsKey(for: auth?.userID))
+        guard let backend, let uid = auth?.userID else { return }
+        Task { try? await backend.acceptHostRules(userID: uid) }
     }
 
     private func persistTrial() {
@@ -303,6 +392,17 @@ final class MeetingStore: ObservableObject {
     }
 
     func filteredMeetings() -> [RankedMeeting] {
+        filteredMeetings(category: selectedCategory, visibility: visibility, cost: costFilter, radius: radius)
+    }
+
+    /// Same pipeline with explicit criteria, so the Filters sheet can preview
+    /// a result count for its draft before committing it.
+    func filteredMeetings(
+        category selectedCategory: MeetingCategory?,
+        visibility: VisibilityFilter,
+        cost costFilter: CostFilter,
+        radius: SearchRadius
+    ) -> [RankedMeeting] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let now = Date()
         var out: [RankedMeeting] = meetings

@@ -36,152 +36,62 @@ struct HostDashboardView: View {
         NavigationStack {
             Group {
                 if auth.userID == nil {
-                    VStack(spacing: 16) {
-                        Spacer()
-                        Image(systemName: "megaphone.fill")
-                            .font(.system(size: 56))
-                            .foregroundStyle(BizStyle.teal)
-                        Text("Host your group on BizLinq")
-                            .font(.title2.bold())
-                            .multilineTextAlignment(.center)
-                        Text("They don't need to know your group's name. They just need to be looking for their next connection. Sign in to set up your group and post your first meeting free.")
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal)
-                        BizPrimaryButton(title: "Sign in with Apple") {
-                            showingSignIn = true
-                        }
-                        .padding(.horizontal, BizStyle.gutter)
-                        Spacer()
-                    }
-                    .padding()
+                    BizIntroView(
+                        systemImage: "person.3.fill",
+                        title: "Host your group on BizLinq",
+                        message: "Help local professionals find your group. Sign in to set up your group and post your first meeting free.",
+                        actionTitle: "Sign in with Apple"
+                    ) { showingSignIn = true }
                 } else if ownedUpcoming.isEmpty && store.myMeetings.isEmpty {
-                    VStack(spacing: 16) {
-                        Spacer()
-                        Image(systemName: "calendar.badge.plus")
-                            .font(.system(size: 56))
-                            .foregroundStyle(BizStyle.teal)
-                        Text("Set up your first meeting")
-                            .font(.title2.bold())
-                        Text("Fill in your group once — your contact details carry over to every future post, and you can edit any live listing anytime.")
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal)
-                        BizPrimaryButton(title: "Post your first meeting") {
-                            showingPost = true
-                        }
-                        .padding(.horizontal, BizStyle.gutter)
-                        Spacer()
-                    }
-                    .padding()
+                    BizIntroView(
+                        systemImage: "calendar.badge.plus",
+                        title: "Set up your first meeting",
+                        message: "Fill in your group once — your contact details carry over to every future post, and you can edit any live listing anytime.",
+                        actionTitle: "Post your first meeting"
+                    ) { showingPost = true }
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 18) {
                             if let name = groupName {
-                                BizGroupHeader(
-                                    groupName: name,
-                                    tagline: nextMeeting?.audienceLine ?? "",
-                                    hostName: nil
-                                )
-                                NavigationLink {
-                                    GroupProfileView(groupName: name)
-                                } label: {
-                                    HStack {
-                                        Text("View public group profile").fontWeight(.semibold)
-                                        Spacer()
-                                        Image(systemName: "chevron.right")
-                                    }
-                                    .foregroundStyle(BizStyle.teal)
-                                    .padding(12)
-                                    .background(BizStyle.teal.opacity(0.08))
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                }
-                                .buttonStyle(.plain)
+                                groupCard(name: name).bizAppear(index: 0)
                             }
-
-                            eligibilityCard
-
+                            eligibilityCard.bizAppear(index: 1)
+                            reachCard.bizAppear(index: 2)
                             if let next = nextMeeting {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Next published meeting")
-                                        .font(.headline)
-                                        .foregroundStyle(BizStyle.ink)
+                                nextMeetingCard(next).bizAppear(index: 3)
+                            }
+
+                            VStack(spacing: 10) {
+                                BizPrimaryButton(title: "Post next meeting", systemImage: "plus") {
+                                    showingPost = true
+                                }
+                                if let name = groupName {
                                     NavigationLink {
-                                        MeetingDetailView(
-                                            ranked: RankedMeeting(
-                                                meeting: next,
-                                                distanceMiles: store.distance(for: next)
-                                            )
-                                        )
+                                        GroupProfileView(groupName: name)
                                     } label: {
-                                        BizMeetingCard(
-                                            ranked: RankedMeeting(
-                                                meeting: next,
-                                                distanceMiles: store.distance(for: next)
-                                            )
-                                        )
+                                        BizSecondaryLabel(title: "View public group profile")
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(BizPressStyle())
                                 }
                             }
+                            .bizAppear(index: 4)
 
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Reach")
-                                    .font(.headline)
-                                    .foregroundStyle(BizStyle.ink)
-                                HStack(spacing: 10) {
-                                    BizMetricTile(
-                                        value: "\(ownedUpcoming.count)",
-                                        label: "Live posts",
-                                        footnote: "Upcoming meetings"
-                                    )
-                                    BizMetricTile(
-                                        value: "\(rsvpCount)",
-                                        label: "RSVPs",
-                                        footnote: "Taps on live posts"
-                                    )
-                                }
-                                HStack(spacing: 10) {
-                                    BizMetricUnavailable(
-                                        label: "Listing views",
-                                        reason: "View tracking isn't collected yet."
-                                    )
-                                    BizMetricUnavailable(
-                                        label: "Website taps",
-                                        reason: "Link tracking isn't collected yet."
-                                    )
-                                }
-                                Text("RSVPs show interest, not guaranteed attendance.")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                            }
-
-                            BizPrimaryButton(title: "Post next meeting") {
-                                showingPost = true
-                            }
-
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("All posts (\(store.myMeetings.count))")
-                                    .font(.headline)
-                                    .foregroundStyle(BizStyle.ink)
+                            VStack(alignment: .leading, spacing: 10) {
+                                BizSectionHeader(title: "All posts (\(store.myMeetings.count))")
                                 ForEach(store.myMeetings) { meeting in
                                     MyMeetingRow(meeting: meeting)
-                                        .padding(12)
-                                        .background(Color(.systemBackground))
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .stroke(BizStyle.hairline, lineWidth: 1)
-                                        )
+                                        .padding(14)
+                                        .bizCard(radius: 14)
                                 }
                             }
+                            .id("allPosts")
                         }
                         .padding(BizStyle.gutter)
                     }
-                    .background(Color(.systemGroupedBackground))
+                    .background(BizStyle.canvas)
                 }
             }
-            .navigationTitle("Host")
+            .navigationTitle(auth.userID != nil && !store.myMeetings.isEmpty ? "Your group" : "Host")
             .task {
                 await store.refreshMyMeetings()
                 await store.refreshTrialFromServer()
@@ -191,7 +101,10 @@ struct HostDashboardView: View {
             }
             .sheet(isPresented: $showingPaywall) {
                 NavigationStack {
-                    PaywallView()
+                    PaywallView(context: trialStatus == .expired ? .trialEnded : .standard) {
+                        store.trialResolvedBySubscription()
+                        showingPaywall = false
+                    }
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {
                                 Button("Close") { showingPaywall = false }
@@ -212,47 +125,145 @@ struct HostDashboardView: View {
         }
     }
 
+    private func groupCard(name: String) -> some View {
+        NavigationLink {
+            GroupProfileView(groupName: name)
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                BizCover(seed: name, category: nextMeeting?.category ?? .businessNetworking)
+                    .frame(height: 132)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+                    .overlay(alignment: .bottomTrailing) {
+                        Label("View profile", systemImage: "eye")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(BizStyle.ink)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(.regularMaterial, in: Capsule())
+                            .padding(10)
+                    }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(name)
+                        .font(.headline)
+                        .foregroundStyle(BizStyle.ink)
+                    if let tagline = nextMeeting?.audienceLine, !tagline.isEmpty {
+                        Text(tagline)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+                .padding(14)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: BizStyle.cardRadius, style: .continuous))
+            .bizCard()
+        }
+        .buttonStyle(BizPressStyle())
+        .accessibilityLabel("\(name). View public group profile.")
+    }
+
+    private var reachCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Reach")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(BizStyle.ink)
+                Spacer()
+                Text("Upcoming posts")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            HStack(spacing: 8) {
+                BizMetricTile(value: "\(ownedUpcoming.count)", label: "Live posts", systemImage: "calendar")
+                BizMetricTile(value: "\(rsvpCount)", label: "RSVPs", systemImage: "person.2.fill")
+                BizMetricUnavailable(label: "Listing views", reason: "Not tracked yet", systemImage: "eye")
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Text("RSVPs are expressions of interest, not guaranteed attendance.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .background(BizStyle.field, in: RoundedRectangle(cornerRadius: BizStyle.cardRadius, style: .continuous))
+    }
+
+    private func nextMeetingCard(_ next: Meeting) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Next meeting", systemImage: "calendar")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(BizStyle.ink)
+                Spacer()
+            }
+            NavigationLink {
+                MeetingDetailView(ranked: RankedMeeting(meeting: next, distanceMiles: store.distance(for: next)))
+            } label: {
+                VStack(alignment: .leading, spacing: 10) {
+                    BizMetaRow(icon: "clock", title: Formatters.dateLine(for: next.startsAt))
+                    BizMetaRow(
+                        icon: next.isVirtual ? "video" : "mappin.and.ellipse",
+                        title: next.isVirtual ? "Online" : "\(next.venue) · \(next.city)"
+                    )
+                    BizMetaRow(
+                        icon: "person.2",
+                        title: next.attendeeCount == 1 ? "1 RSVP so far" : "\(next.attendeeCount) RSVPs so far"
+                    )
+                }
+                .padding(14)
+                .bizCard(radius: 14)
+            }
+            .buttonStyle(BizPressStyle())
+        }
+        .padding(12)
+        .background(BizStyle.field, in: RoundedRectangle(cornerRadius: BizStyle.cardRadius, style: .continuous))
+    }
+
     @ViewBuilder
     private var eligibilityCard: some View {
         if subscriptions.isPosterActive {
             HStack(spacing: 12) {
-                Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
-                VStack(alignment: .leading) {
-                    Text(subscriptions.activePlan?.name ?? "Poster plan active").font(.headline)
-                    Text("Post as often as you like").font(.subheadline).foregroundStyle(.secondary)
+                BizIconBadge(systemImage: "checkmark.seal.fill", size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(subscriptions.activePlan?.name ?? "Poster plan active")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(BizStyle.ink)
+                    Text("Post as often as you like").font(.caption).foregroundStyle(.secondary)
                 }
+                Spacer()
             }
             .padding(12)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(BizStyle.hairline, lineWidth: 1))
+            .bizCard(radius: 14)
         } else {
-            VStack(alignment: .leading, spacing: 8) {
-                switch trialStatus {
-                case .notStarted:
-                    Text("Post your first meeting free")
-                        .font(.headline)
-                    Text("Your first post starts a 14-day trial.")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                case .active(let days):
-                    Text(days == 1 ? "1 day left in your free trial" : "\(days) days left in your free trial")
-                        .font(.headline)
-                    Text("Subscribe to keep posting after the trial.")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                case .expired:
-                    Text("Trial ended — subscribe to post")
-                        .font(.headline)
-                    Text("Browse free, or resubscribe anytime.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                BizIconBadge(systemImage: trialStatus == .expired ? "exclamationmark.circle" : "sparkles", size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    switch trialStatus {
+                    case .notStarted:
+                        Text("Post your first meeting free")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Your first post starts a 14-day trial.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    case .active(let days):
+                        Text(days == 1 ? "1 day left in your free trial" : "\(days) days left in your free trial")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Subscribe to keep posting after the trial.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    case .expired:
+                        Text(store.trialDeclined ? "Hosting paused" : "Your free trial has ended")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Your meetings stay live. Pick a plan to post again.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
-                Button("See poster plans") { showingPaywall = true }
-                    .buttonStyle(.borderedProminent)
+                .foregroundStyle(BizStyle.ink)
+                Spacer(minLength: 4)
+                Button("Plans") { showingPaywall = true }
+                    .font(.subheadline.weight(.semibold))
                     .tint(BizStyle.teal)
             }
             .padding(12)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(BizStyle.hairline, lineWidth: 1))
+            .bizCard(radius: 14)
         }
     }
 }

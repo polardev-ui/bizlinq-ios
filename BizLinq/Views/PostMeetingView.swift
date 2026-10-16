@@ -17,7 +17,7 @@ struct PostMeetingView: View {
     @State private var postedTitle = ""
     @State private var showingSignIn = false
     @State private var showingSubscribe = false
-    @State private var confirmingCancelTrial = false
+    @State private var showingRules = false
     @State private var publishError: String?
     @State private var isPublishing = false
     @State private var showingReview = false
@@ -72,21 +72,39 @@ struct PostMeetingView: View {
                         didPost = false
                     }
                 } else if trialStatus == .expired && !subscriptions.isPosterActive {
+                    // Day 14 has passed: posting is locked until a plan is active.
                     if store.trialDeclined {
                         TrialPausedView(showingSubscribe: $showingSubscribe)
                     } else {
-                        TrialExpiredView(
-                            showingSubscribe: $showingSubscribe,
-                            confirmingCancelTrial: $confirmingCancelTrial
+                        TrialEndedView(
+                            style: .inline,
+                            onPlans: { showingSubscribe = true },
+                            onBrowse: { store.stopHostingAfterTrial() },
+                            onRemind: { store.remindAboutTrialTomorrow() }
                         )
                     }
+                } else if !store.hostRulesAccepted {
+                    HostRulesRequiredView { showingRules = true }
                 } else {
                     listingForm
                 }
             }
-            .navigationTitle("Post a meeting")
+            .navigationTitle(prefilled ? "Post next meeting" : "Post a meeting")
             .task {
                 await store.refreshTrialFromServer()
+                await store.refreshHostRules()
+                if auth.userID != nil, !store.hostRulesAccepted, trialStatus != .expired || subscriptions.isPosterActive {
+                    showingRules = true
+                }
+            }
+            .fullScreenCover(isPresented: $showingRules) {
+                HostRulesView(
+                    onAccept: {
+                        store.acceptHostRules()
+                        showingRules = false
+                    },
+                    onNotNow: { showingRules = false }
+                )
             }
             .navigationDestination(isPresented: $showingReview) {
                 if let place = reviewPlace {
@@ -103,9 +121,8 @@ struct PostMeetingView: View {
         }
         .sheet(isPresented: $showingSubscribe) {
             NavigationStack {
-                PaywallView {
-                    store.setTrialDeclined(false)
-                    TrialNotifications.cancelTrialReminders()
+                PaywallView(context: trialStatus == .expired ? .trialEnded : .standard) {
+                    store.trialResolvedBySubscription()
                     showingSubscribe = false
                 }
                 .toolbar {
@@ -114,14 +131,6 @@ struct PostMeetingView: View {
                     }
                 }
             }
-        }
-        .confirmationDialog("Cancel your trial?", isPresented: $confirmingCancelTrial, titleVisibility: .visible) {
-            Button("Cancel trial", role: .destructive) {
-                store.setTrialDeclined(true)
-            }
-            Button("Keep going", role: .cancel) {}
-        } message: {
-            Text("You won't be able to post new meetings. You can resubscribe anytime.")
         }
     }
 
@@ -144,6 +153,7 @@ struct PostMeetingView: View {
                     Label("Copied from your previous listing. Review and update.", systemImage: "doc.on.doc")
                         .font(.footnote)
                         .foregroundStyle(BizStyle.teal)
+                        .listRowBackground(BizStyle.tealSoft)
                 }
             }
 
@@ -155,23 +165,36 @@ struct PostMeetingView: View {
             )
 
             Section {
-                Button {
-                    showingReview = true
-                } label: {
-                    Text("Review meeting")
-                }
-                .disabled(!isValid)
-                if !isValid {
-                    Text(invalidReason)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
                 Button("Discard draft", role: .destructive) {
-                    draft = MeetingDraft()
-                    located = nil
+                    withAnimation(BizStyle.spring) {
+                        draft = MeetingDraft()
+                        located = nil
+                    }
                 }
                 .font(.subheadline)
             }
+        }
+        .animation(BizStyle.spring, value: draft.isVirtual)
+        .animation(BizStyle.spring, value: draft.isPaid)
+        .animation(BizStyle.spring, value: located != nil)
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 6) {
+                if !isValid {
+                    Text(invalidReason)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .transition(.opacity)
+                }
+                BizPrimaryButton(title: "Review meeting", enabled: isValid) {
+                    showingReview = true
+                }
+            }
+            .animation(BizStyle.snappy, value: isValid)
+            .padding(.horizontal, BizStyle.gutter)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
+            .background(.bar)
         }
         .alert("Couldn't locate that address", isPresented: $showGeoError) {
             Button("OK", role: .cancel) {}
@@ -226,7 +249,14 @@ struct PostMeetingView: View {
                     showingReview = false
                     showingSignIn = true
                 case .server(let message):
-                    publishError = message
+                    if message.localizedCaseInsensitiveContains("row-level security") {
+                        // Server-side can_post said no: trial over, no verified plan.
+                        await store.refreshTrialFromServer()
+                        showingReview = false
+                        publishError = "Your free trial has ended, so new posts need an active plan. Choose a plan to keep posting."
+                    } else {
+                        publishError = message
+                    }
                 }
             } catch {
                 isPublishing = false
@@ -240,59 +270,15 @@ struct SignInPrompt: View {
     @Binding var showingSignIn: Bool
 
     var body: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "person.badge.key.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(BizStyle.teal)
-            Text("Sign in to post")
-                .font(.title2.bold())
-            Text("Posting requires a free BizLinq account. Your first 14 days are free.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-            Button("Sign in with Apple") {
-                showingSignIn = true
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(BizStyle.teal)
-            Spacer()
-        }
-        .padding()
+        BizIntroView(
+            systemImage: "person.badge.key.fill",
+            title: "Sign in to post",
+            message: "Posting requires a free BizLinq account. Your first 14 days are free.",
+            actionTitle: "Sign in with Apple"
+        ) { showingSignIn = true }
         .sheet(isPresented: $showingSignIn) {
             SignInView()
         }
-    }
-}
-
-struct TrialExpiredView: View {
-    @Binding var showingSubscribe: Bool
-    @Binding var confirmingCancelTrial: Bool
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "calendar.badge.exclamationmark")
-                .font(.system(size: 56))
-                .foregroundStyle(.orange)
-            Text("Your 14-day trial ended")
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
-            Text("Subscribe to keep posting your meetings, or cancel and browse free like everyone else.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-            Button("Subscribe — $10/month") {
-                showingSubscribe = true
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(BizStyle.teal)
-            Button("Cancel", role: .destructive) {
-                confirmingCancelTrial = true
-            }
-            Spacer()
-        }
-        .padding()
     }
 }
 
@@ -300,49 +286,49 @@ struct TrialPausedView: View {
     @Binding var showingSubscribe: Bool
 
     var body: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "pause.circle.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(.secondary)
-            Text("Posting is paused")
-                .font(.title2.bold())
-            Text("You cancelled your trial. Resubscribe anytime to post new meetings.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-            Button("Subscribe — $10/month") {
-                showingSubscribe = true
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(BizStyle.teal)
-            Spacer()
-        }
-        .padding()
+        BizIntroView(
+            systemImage: "pause.circle.fill",
+            title: "Posting is paused",
+            message: "You cancelled your trial. Resubscribe anytime to post new meetings.",
+            actionTitle: "Subscribe — $10/month"
+        ) { showingSubscribe = true }
     }
 }
 
 struct PostSuccessView: View {
     let title: String
     let onDone: () -> Void
+    @State private var celebrate = false
 
     var body: some View {
         VStack(spacing: 16) {
             Spacer()
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.green)
+            Image(systemName: "checkmark")
+                .font(.system(size: 44, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 104, height: 104)
+                .background(BizStyle.teal, in: Circle())
+                .background(Circle().fill(BizStyle.tealSoft).scaleEffect(celebrate ? 1.45 : 0.8))
+                .scaleEffect(celebrate ? 1 : 0.4)
+                .opacity(celebrate ? 1 : 0)
             Text("Meeting published")
                 .font(.title2.bold())
+                .foregroundStyle(BizStyle.ink)
+                .bizAppear(index: 2)
             Text("\"\(title)\" is now live for people across the US to discover. Find it under Host.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
-                .padding(.horizontal)
-            Button("Done", action: onDone)
-                .buttonStyle(.borderedProminent)
-                .tint(BizStyle.teal)
+                .bizAppear(index: 3)
+            BizPrimaryButton(title: "Done", action: onDone)
+                .padding(.top, 8)
+                .bizAppear(index: 4)
+            Spacer()
             Spacer()
         }
-        .padding()
+        .padding(.horizontal, 24)
+        .sensoryFeedback(.success, trigger: celebrate)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { celebrate = true }
+        }
     }
 }

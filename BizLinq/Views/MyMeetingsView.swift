@@ -68,9 +68,17 @@ struct MyMeetingsView: View {
 
 struct MyMeetingRow: View {
     @EnvironmentObject private var store: MeetingStore
+    @EnvironmentObject private var subscriptions: SubscriptionManager
     let meeting: Meeting
     @State private var confirmingCancel = false
     @State private var editing: Meeting?
+    @State private var showingPlans = false
+
+    /// Edits count as posting: after the trial, they need a plan too.
+    private var postingLocked: Bool {
+        TrialStatus.current(start: store.trialStartDate, now: Date(), subscribed: subscriptions.isPosterActive) == .expired
+            && !subscriptions.isPosterActive
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -88,8 +96,13 @@ struct MyMeetingRow: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Edit") {
-                    editing = meeting
+                    if postingLocked {
+                        showingPlans = true
+                    } else {
+                        editing = meeting
+                    }
                 }
+                .tint(BizStyle.teal)
                 .font(.subheadline)
                 Button("Cancel", role: .destructive) {
                     confirmingCancel = true
@@ -101,6 +114,19 @@ struct MyMeetingRow: View {
         .sheet(item: $editing) { meeting in
             NavigationStack {
                 EditMeetingView(meeting: meeting)
+            }
+        }
+        .sheet(isPresented: $showingPlans) {
+            NavigationStack {
+                PaywallView(context: .trialEnded) {
+                    store.trialResolvedBySubscription()
+                    showingPlans = false
+                }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") { showingPlans = false }
+                    }
+                }
             }
         }
         .confirmationDialog("Cancel this meeting?", isPresented: $confirmingCancel, titleVisibility: .visible) {

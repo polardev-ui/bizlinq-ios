@@ -14,20 +14,22 @@ struct ContentView: View {
                 .tag(0)
             AttendeeMeetingsView()
                 .tabItem {
-                    Label("My Meetings", systemImage: "ticket.fill")
+                    Label("My Meetings", systemImage: "calendar")
                 }
                 .tag(1)
             HostDashboardView()
                 .tabItem {
-                    Label("Host", systemImage: "megaphone.fill")
+                    Label("Host", systemImage: "plus.circle")
                 }
                 .tag(2)
             ProfileView()
                 .tabItem {
-                    Label("Profile", systemImage: "person.circle")
+                    Label("Profile", systemImage: "person")
                 }
                 .tag(3)
         }
+        .tint(BizStyle.teal)
+        .sensoryFeedback(.selection, trigger: tab)
         .onAppear {
             tab = initialTab
         }

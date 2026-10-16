@@ -41,11 +41,15 @@ struct MeetingFormFields: View {
         BizFormSection(title: "Meeting", footnote: timezoneNote) {
             DatePicker("Date of meeting", selection: $draft.date, in: Date()..., displayedComponents: [.date])
             DatePicker("Time of meeting", selection: $draft.time, displayedComponents: [.hourAndMinute])
-            Picker("Format", selection: $draft.isVirtual) {
-                Text("In person").tag(false)
-                Text("Online").tag(true)
+            HStack(spacing: 10) {
+                BizChoiceTile(title: "In person", systemImage: "person.2", selected: !draft.isVirtual) {
+                    draft.isVirtual = false
+                }
+                BizChoiceTile(title: "Online", systemImage: "video", selected: draft.isVirtual) {
+                    draft.isVirtual = true
+                }
             }
-            .pickerStyle(.segmented)
+            .listRowSeparator(.hidden)
             if draft.isVirtual {
                 TextField("Online access info (e.g. Zoom link sent via event page)", text: $draft.onlineAccess)
             } else {
@@ -53,7 +57,8 @@ struct MeetingFormFields: View {
                 if let located {
                     Label("Found: \(located.label)", systemImage: "checkmark.circle.fill")
                         .font(.footnote)
-                        .foregroundStyle(.green)
+                        .foregroundStyle(BizStyle.teal)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 } else {
                     Button {
                         locate()
@@ -61,22 +66,25 @@ struct MeetingFormFields: View {
                         if isLocating {
                             ProgressView()
                         } else {
-                            Text("Find location")
+                            Label("Find location", systemImage: "mappin.and.ellipse")
                         }
                     }
+                    .tint(BizStyle.teal)
                     .disabled(draft.location.trimmingCharacters(in: .whitespaces).isEmpty || isLocating)
                 }
             }
         }
 
         BizFormSection(title: "Attendance cost") {
-            Picker("Cost", selection: $draft.isPaid) {
-                Text("Free").tag(false)
-                Text("Paid").tag(true)
+            HStack(spacing: 10) {
+                BizChoiceTile(title: "Free", selected: !draft.isPaid) { draft.isPaid = false }
+                BizChoiceTile(title: "Paid", selected: draft.isPaid) { draft.isPaid = true }
             }
-            .pickerStyle(.segmented)
+            .listRowSeparator(.hidden)
             if draft.isPaid {
                 HStack {
+                    Text(Meeting.currencySymbol(for: draft.feeCurrency))
+                        .foregroundStyle(.secondary)
                     TextField("Amount", text: $draft.feeAmount)
                         .keyboardType(.decimalPad)
                     Picker("Currency", selection: $draft.feeCurrency) {

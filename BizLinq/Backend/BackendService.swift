@@ -23,6 +23,9 @@ protocol BackendServiceProtocol {
     func setRSVP(meetingID: UUID, userID: UUID, rsvp: Bool) async throws
     func submitReport(meetingID: UUID, userID: UUID, reason: String) async throws
     func fetchTrialStart(userID: UUID) async throws -> Date?
+    func fetchProfile(userID: UUID) async throws -> ProfileRow?
+    func acceptHostRules(userID: UUID) async throws
+    func verifySubscription(jws: String) async throws -> Date?
 }
 
 /// Row in public.profiles. Upserted on sign-in; extended in Profile.
@@ -32,6 +35,7 @@ struct ProfileRow: Codable {
     var homeZip: String?
     var radiusMiles: Int?
     var trialStartedAt: Date?
+    var hostRulesAcceptedAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -39,6 +43,7 @@ struct ProfileRow: Codable {
         case homeZip = "home_zip"
         case radiusMiles = "radius_miles"
         case trialStartedAt = "trial_started_at"
+        case hostRulesAcceptedAt = "host_rules_accepted_at"
     }
 
     init(id: UUID, displayName: String?, homeZip: String?, radiusMiles: Int?, trialStartedAt: Date? = nil) {
@@ -56,6 +61,7 @@ struct ProfileRow: Codable {
         homeZip = try c.decodeIfPresent(String.self, forKey: .homeZip)
         radiusMiles = try c.decodeIfPresent(Int.self, forKey: .radiusMiles)
         trialStartedAt = try Meeting.decodeDate(c, key: .trialStartedAt)
+        hostRulesAcceptedAt = try? Meeting.decodeDate(c, key: .hostRulesAcceptedAt)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -140,6 +146,33 @@ final class SupabaseBackendService: BackendServiceProtocol {
 
     func fetchTrialStart(userID: UUID) async throws -> Date? {
         try await client.fetchProfile(id: userID)?.trialStartedAt
+    }
+
+    func fetchProfile(userID: UUID) async throws -> ProfileRow? {
+        do {
+            return try await client.fetchProfile(id: userID)
+        } catch {
+            throw mapError(error)
+        }
+    }
+
+    func acceptHostRules(userID: UUID) async throws {
+        do {
+            try await client.acceptHostRules(userID: userID)
+        } catch {
+            throw mapError(error)
+        }
+    }
+
+    /// Sends a StoreKit-signed transaction to the server, which verifies
+    /// Apple's signature and records the entitlement that `can_post` checks.
+    /// Returns the server-recorded expiry.
+    func verifySubscription(jws: String) async throws -> Date? {
+        do {
+            return try await client.verifySubscription(jws: jws)
+        } catch {
+            throw mapError(error)
+        }
     }
 
     private func mapError(_ error: Error) -> BackendError {

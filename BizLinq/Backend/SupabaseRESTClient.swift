@@ -285,6 +285,27 @@ final class SupabaseRESTClient {
         )
     }
 
+    /// Records that the host agreed to the posting rules (once per account).
+    func acceptHostRules(userID: UUID) async throws {
+        struct Body: Encodable { let host_rules_accepted_at: String }
+        try await patch(
+            path: "/rest/v1/profiles?id=eq.\(userID.uuidString)",
+            body: Body(host_rules_accepted_at: Meeting.isoString(Date()))
+        )
+    }
+
+    /// Edge function: verifies an App Store JWS and stores the entitlement.
+    func verifySubscription(jws: String) async throws -> Date? {
+        struct Body: Encodable { let jws: String }
+        struct Response: Decodable {
+            let active: Bool
+            let expires_at: String?
+        }
+        let response: Response = try await post(path: "/functions/v1/verify-subscription", body: Body(jws: jws))
+        guard response.active, let raw = response.expires_at else { return nil }
+        return Meeting.parseISO(raw)
+    }
+
     func upsertProfile(_ row: ProfileRow) async throws {
         let _: EmptyResponse = try await post(path: "/rest/v1/profiles", body: row, prefer: "resolution=merge-duplicates")
     }
