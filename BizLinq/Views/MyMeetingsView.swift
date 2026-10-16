@@ -1,0 +1,111 @@
+import SwiftUI
+
+struct MyMeetingsView: View {
+    @EnvironmentObject private var store: MeetingStore
+    @EnvironmentObject private var subscriptions: SubscriptionManager
+    @State private var showingPaywall = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    if subscriptions.isPosterActive {
+                        HStack(spacing: 12) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundStyle(.green)
+                            VStack(alignment: .leading) {
+                                Text(subscriptions.activePlan?.name ?? "Poster plan active")
+                                    .font(.headline)
+                                if store.canPostBySchedule {
+                                    Text("You can publish this week")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                } else if let next = store.nextEligiblePostDate {
+                                    Text("Next post after \(Formatters.dateLine(for: next))")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("You don't have a poster plan yet")
+                                .font(.headline)
+                            Text("Browsing is free. A plan lets you publish 1 meeting per week.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Button("See poster plans") {
+                                showingPaywall = true
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+
+                Section("My posts (\(store.myMeetings.count))") {
+                    if store.myMeetings.isEmpty {
+                        Text("Nothing here yet. Publish your first meeting from the Post tab.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(store.myMeetings) { meeting in
+                            MyMeetingRow(meeting: meeting)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("My Posts")
+            .task {
+                await store.refreshMyMeetings()
+            }
+            .sheet(isPresented: $showingPaywall) {
+                NavigationStack {
+                    PaywallView()
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Close") { showingPaywall = false }
+                            }
+                        }
+                }
+            }
+        }
+    }
+}
+
+struct MyMeetingRow: View {
+    @EnvironmentObject private var store: MeetingStore
+    let meeting: Meeting
+    @State private var confirmingCancel = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(meeting.title)
+                .font(.headline)
+            Text("\(meeting.groupName) - \(Formatters.dateLine(for: meeting.startsAt))")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text(meeting.locationLine)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack {
+                Label("\(meeting.attendeeCount) going", systemImage: "person.2.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Cancel", role: .destructive) {
+                    confirmingCancel = true
+                }
+                .font(.subheadline)
+            }
+        }
+        .padding(.vertical, 4)
+        .confirmationDialog("Cancel this meeting?", isPresented: $confirmingCancel, titleVisibility: .visible) {
+            Button("Cancel meeting", role: .destructive) {
+                Task { await store.cancelMeeting(meeting) }
+            }
+            Button("Keep it", role: .cancel) {}
+        } message: {
+            Text("This removes the listing. Your 7-day posting clock keeps running.")
+        }
+    }
+}

@@ -1,0 +1,28 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Build artifacts (local archives, exports)
+/output/
+/tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# Supabase CLI
+supabase/.branches/
+supabase/.temp/

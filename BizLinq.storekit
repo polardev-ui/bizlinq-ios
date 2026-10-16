@@ -1,0 +1,41 @@
+{
+  "products" : [
+    {
+      "displayPrice" : "10.00",
+      "familyShareable" : false,
+      "internalID" : "BIZLINQ-MONTHLY-001",
+      "localizations" : [
+        {
+          "description" : "Post a networking meeting every week. Cancel anytime.",
+          "displayName" : "Poster Monthly",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "bizlinq.poster.monthly",
+      "referenceName" : "Poster Monthly",
+      "type" : "Auto-Renewable Subscription"
+    },
+    {
+      "displayPrice" : "99.00",
+      "familyShareable" : false,
+      "internalID" : "BIZLINQ-ANNUAL-001",
+      "localizations" : [
+        {
+          "description" : "Post a networking meeting every week. About 2 months free vs monthly.",
+          "displayName" : "Poster Annual",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "bizlinq.poster.annual",
+      "referenceName" : "Poster Annual",
+      "type" : "Auto-Renewable Subscription"
+    }
+  ],
+  "settings" : {
+    "locale" : "en_US"
+  },
+  "version" : {
+    "major" : 1,
+    "minor" : 0
+  }
+}
