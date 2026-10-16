@@ -1,6 +1,9 @@
 import MapKit
 import SwiftUI
 
+/// Screen 3 — Meeting details. Cost is visible before the RSVP action:
+/// free events read "RSVP for free"; paid events read "RSVP" with the fee
+/// shown. No payment is collected in-app.
 struct MeetingDetailView: View {
     @EnvironmentObject private var store: MeetingStore
     @EnvironmentObject private var subscriptions: SubscriptionManager
@@ -33,65 +36,85 @@ struct MeetingDetailView: View {
         store.meetings.first(where: { $0.id == meeting.id }) ?? meeting
     }
 
+    private var rsvpd: Bool { store.hasRSVPd(meeting) }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 8) {
-                    Label(meeting.category.rawValue, systemImage: meeting.category.systemImage)
-                        .font(.caption.bold())
+                    Text(meeting.category.rawValue.uppercased())
+                        .font(.caption2.bold())
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(meeting.category.tint.opacity(0.15))
-                        .foregroundStyle(meeting.category.tint)
+                        .background(BizStyle.teal.opacity(0.12))
+                        .foregroundStyle(BizStyle.teal)
                         .clipShape(Capsule())
                     if meeting.isVirtual {
-                        Text("VIRTUAL")
-                            .font(.caption.bold())
+                        Text("ONLINE")
+                            .font(.caption2.bold())
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .background(Color.blue.opacity(0.15))
+                            .background(Color.blue.opacity(0.12))
                             .foregroundStyle(.blue)
                             .clipShape(Capsule())
                     }
+                    BizCostBadge(meeting: meeting)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(meeting.title)
-                        .font(.title2.bold())
-                    Text("Hosted by \(meeting.groupName)")
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
-                    Text(meeting.tagline)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.title.bold())
+                        .foregroundStyle(BizStyle.ink)
+                        .accessibilityAddTraits(.isHeader)
+                    if !meeting.audienceLine.isEmpty {
+                        Text(meeting.audienceLine)
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
-                DetailInfoRow(icon: "calendar", text: Formatters.full.string(from: meeting.startsAt))
-                DetailInfoRow(
-                    icon: "mappin.circle.fill",
-                    text: meeting.isVirtual
-                        ? "Online event - link sent after RSVP"
-                        : "\(meeting.venue)\n\(meeting.address), \(meeting.city), \(meeting.state) \(meeting.zipCode)"
-                )
-                if let text = store.distanceText(for: meeting) {
-                    DetailInfoRow(icon: "car.fill", text: text)
-                }
-                DetailInfoRow(icon: "person.fill", text: "Hosted by \(meeting.hostName)")
-                DetailInfoRow(
-                    icon: "person.2.fill",
-                    text: live.spotsLeftText ?? "\(live.attendeeCount) going"
-                )
-                DetailInfoRow(icon: "ticket", text: "Cost: \(meeting.costDescription)")
-                if let source = meeting.source {
-                    DetailInfoRow(icon: "checkmark.seal.fill", text: "Curated listing · sourced from \(source)")
-                }
-                if let urlString = meeting.sourceURL, let url = URL(string: urlString) {
-                    Link(destination: url) {
-                        Label("More info & RSVP on the event page", systemImage: "safari")
-                            .font(.subheadline)
+                VStack(spacing: 12) {
+                    BizMetaRow(
+                        icon: "calendar",
+                        title: Formatters.fullWithZone.string(from: meeting.startsAt),
+                        detail: "Local time on your device"
+                    )
+                    if meeting.isVirtual {
+                        BizMetaRow(
+                            icon: "video.fill",
+                            title: "Online event",
+                            detail: "Check the event page for access instructions."
+                        )
+                    } else {
+                        BizMetaRow(
+                            icon: "mappin.circle.fill",
+                            title: meeting.venue,
+                            detail: "\(meeting.address), \(meeting.city), \(meeting.state) \(meeting.zipCode)"
+                        )
                     }
-                    .padding(.vertical, 2)
+                    if let text = store.distanceText(for: meeting) {
+                        BizMetaRow(icon: "car.fill", title: text, detail: "Straight-line distance")
+                    }
+                    BizMetaRow(
+                        icon: "ticket.fill",
+                        title: meeting.isFreeEntry ? "Free entry" : "Entry: \(meeting.costBadgeText)",
+                        detail: meeting.isFreeEntry
+                            ? "No attendance fee listed."
+                            : "Pay the host directly — BizLinq never charges attendees."
+                    )
+                    BizMetaRow(
+                        icon: "person.2.fill",
+                        title: live.spotsLeftText ?? "\(live.attendeeCount) going",
+                        detail: "RSVPs show interest, not guaranteed attendance."
+                    )
                 }
+                .padding(14)
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: BizStyle.cardRadius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: BizStyle.cardRadius)
+                        .stroke(BizStyle.hairline, lineWidth: 1)
+                )
 
                 if !meeting.isVirtual {
                     Map(position: $position) {
@@ -99,50 +122,56 @@ struct MeetingDetailView: View {
                     }
                     .frame(height: 200)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .accessibilityLabel("Map showing \(meeting.venue)")
                 }
+
+                BizGroupHeader(
+                    groupName: meeting.groupName,
+                    tagline: meeting.audienceLine,
+                    hostName: meeting.hostName
+                )
+
+                NavigationLink {
+                    GroupProfileView(groupName: meeting.groupName)
+                } label: {
+                    HStack {
+                        Text("View group profile").fontWeight(.semibold)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                    }
+                    .foregroundStyle(BizStyle.teal)
+                    .padding(14)
+                    .background(BizStyle.teal.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("View group profile for \(meeting.groupName)")
 
                 Text("About this meeting")
                     .font(.headline)
+                    .foregroundStyle(BizStyle.ink)
                 Text(meeting.description)
                     .font(.body)
 
-                Button {
-                    if auth.userID == nil {
-                        showingSignIn = true
-                    } else {
-                        Task {
-                            do {
-                                try await store.toggleRSVP(for: meeting)
-                            } catch {
-                                rsvpError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                            }
-                        }
-                    }
-                } label: {
-                    Text(store.hasRSVPd(meeting) ? "RSVP confirmed - tap to undo" : "RSVP for free")
-                        .frame(maxWidth: .infinity)
-                        .padding()
+                if let source = meeting.source {
+                    Label("Curated listing · sourced from \(source)", systemImage: "checkmark.seal.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(store.hasRSVPd(meeting) ? .green : .teal)
-
-                ShareLink(item: shareText) {
-                    Label("Share this meeting", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                }
-                .buttonStyle(.bordered)
-
-                if !subscriptions.isPosterActive {
-                    Button("Post your own meeting") {
-                        showingPaywall = true
+                if let urlString = meeting.sourceURL, let url = URL(string: urlString),
+                   urlString.hasPrefix("http") {
+                    Link(destination: url) {
+                        Label("More info on the event page", systemImage: "safari")
+                            .font(.subheadline)
+                            .foregroundStyle(BizStyle.teal)
                     }
-                    .frame(maxWidth: .infinity)
-                    .font(.subheadline)
+                    .padding(.vertical, 2)
                 }
             }
-            .padding()
+            .padding(BizStyle.gutter)
+            .padding(.bottom, 90)
         }
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -167,7 +196,40 @@ struct MeetingDetailView: View {
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
+                .accessibilityLabel("Meeting options")
             }
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 8) {
+                BizPrimaryButton(
+                    title: rsvpd ? "RSVP confirmed — tap to undo"
+                        : (meeting.isFreeEntry ? "RSVP for free" : "RSVP"),
+                    isBusy: false
+                ) {
+                    if auth.userID == nil {
+                        showingSignIn = true
+                    } else {
+                        Task {
+                            do {
+                                try await store.toggleRSVP(for: meeting)
+                            } catch {
+                                rsvpError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                            }
+                        }
+                    }
+                }
+                ShareLink(item: shareText) {
+                    Label("Share this meeting", systemImage: "square.and.arrow.up")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                }
+                .buttonStyle(.bordered)
+                .tint(BizStyle.teal)
+            }
+            .padding(.horizontal, BizStyle.gutter)
+            .padding(.vertical, 8)
+            .background(.bar)
         }
         .sheet(isPresented: $showingPaywall) {
             NavigationStack {
@@ -248,20 +310,5 @@ struct MeetingDetailView: View {
 
     private var shareText: String {
         "\(meeting.title) - \(meeting.groupName) on \(Formatters.dateLine(for: meeting.startsAt)) at \(meeting.venue), \(meeting.city). Found on BizLinq."
-    }
-}
-
-struct DetailInfoRow: View {
-    let icon: String
-    let text: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .foregroundStyle(.teal)
-                .frame(width: 24)
-            Text(text)
-                .font(.subheadline)
-        }
     }
 }

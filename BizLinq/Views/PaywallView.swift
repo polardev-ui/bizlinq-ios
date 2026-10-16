@@ -20,11 +20,9 @@ struct PaywallView: View {
                     .padding(.top, 16)
 
                 VStack(spacing: 6) {
-                    Text("Post to BizLinq")
+                    Text("Help local professionals find your group")
                         .font(.title.bold())
-                    Text("Attendees browse and join for free. Hosts pay to post.")
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(.secondary)
                     Text("They don't need to know your group's name. They just need to be looking for their next connection.")
                         .font(.subheadline.italic())
                         .multilineTextAlignment(.center)
@@ -33,9 +31,9 @@ struct PaywallView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    PaywallBullet(icon: "antenna.radiowaves.left.and.right", text: "Advertise to people across the entire US")
-                    PaywallBullet(icon: "calendar.badge.clock", text: "Unlimited live posts — publish as often as you like")
-                    PaywallBullet(icon: "person.2.fill", text: "Free RSVPs - see exactly who is coming")
+                    PaywallBullet(icon: "mappin.circle.fill", text: "Discovery by location and category")
+                    PaywallBullet(icon: "person.2.fill", text: "Meeting details and free RSVPs")
+                    PaywallBullet(icon: "calendar.badge.clock", text: "Unlimited meeting posts, editable anytime")
                 }
                 .padding()
                 .background(Color(.secondarySystemBackground))
@@ -46,6 +44,19 @@ struct PaywallView: View {
                         PlanCard(plan: plan, isSelected: plan.id == selectedID, trialEligible: subscriptions.isTrialEligible(plan))
                             .onTapGesture { selectedID = plan.id }
                     }
+                }
+
+                VStack(spacing: 4) {
+                    Text("14 days free")
+                        .font(.headline)
+                    Text(selected.id == SubscriptionPlan.annual.id
+                         ? "$99/year afterward"
+                         : "$10/month afterward")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("This is for hosting. Attending events is always free.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Button {
@@ -61,7 +72,7 @@ struct PaywallView: View {
                             .frame(maxWidth: .infinity)
                             .padding()
                     } else if subscriptions.isTrialEligible(selected) {
-                        Text("Start 14-day free trial")
+                        Text("Start your free trial")
                             .frame(maxWidth: .infinity)
                             .padding()
                     } else {
@@ -84,6 +95,16 @@ struct PaywallView: View {
                     Task { await subscriptions.restore() }
                 }
                 .font(.subheadline)
+
+                HStack(spacing: 16) {
+                    if let terms = URL(string: "https://bizlinq.app/terms") {
+                        Link("Terms", destination: terms)
+                    }
+                    if let privacy = URL(string: "https://bizlinq.app/privacy") {
+                        Link("Privacy", destination: privacy)
+                    }
+                }
+                .font(.footnote)
 
                 Text("Post unlimited meetings on every plan. Subscriptions renew automatically until cancelled in your App Store settings.")
                     .font(.footnote)

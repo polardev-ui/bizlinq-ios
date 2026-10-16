@@ -38,6 +38,17 @@ enum MeetingCategory: String, CaseIterable, Identifiable, Codable, Hashable {
 
     var id: String { rawValue }
 
+    /// Short chip label for the Discover filter row.
+    var shortName: String {
+        switch self {
+        case .realEstate: return "Real Estate"
+        case .businessNetworking: return "Networking"
+        case .technology: return "Technology"
+        case .networkMarketing: return "Marketing"
+        case .specialEvents: return "Events"
+        }
+    }
+
     /// Old category names still present in previously imported rows.
     /// Maps them forward so legacy content keeps working.
     /// "Business Start Ups" was merged into Business Networking.
@@ -96,6 +107,12 @@ struct Meeting: Identifiable, Hashable {
     var attendeeLimit: Int? = nil
     var isVirtual: Bool = false
     var costDescription: String = "Free"
+    /// Structured attendance fee in minor units, when the host supplied one.
+    /// Nil means "unknown / see organizer" — never treated as free.
+    var feeCents: Int? = nil
+    var feeCurrency: String? = nil
+    /// Who the meeting is for, when the host supplied it.
+    var audience: String? = nil
     var status: String = "live"
     /// Set by the server on insert. Never sent back up.
     var createdAt: Date? = nil
@@ -112,6 +129,52 @@ struct Meeting: Identifiable, Hashable {
             return "Virtual event"
         }
         return "\(venue) - \(city), \(state)"
+    }
+
+    /// True only when entry is actually free. Unknown/unspecified costs
+    /// ("See organizer", "Paid (see event page)", "") are NOT free.
+    var isFreeEntry: Bool {
+        if let cents = feeCents { return cents == 0 }
+        let trimmed = costDescription.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return trimmed.hasPrefix("free")
+    }
+
+    /// Short badge copy: "Free", a formatted fee, or "Fee varies".
+    var costBadgeText: String {
+        if let cents = feeCents, let currency = feeCurrency, !currency.isEmpty {
+            if cents == 0 { return "Free" }
+            let major = Double(cents) / 100.0
+            let symbol = Self.currencySymbol(for: currency)
+            return String(format: "%@%.2f", symbol, major)
+                .replacingOccurrences(of: ".00", with: "")
+        }
+        if isFreeEntry { return "Free" }
+        if costDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Fee varies"
+        }
+        if costDescription.lowercased().contains("see organizer")
+            || costDescription.lowercased().contains("see event page") {
+            return "Fee varies"
+        }
+        return costDescription
+    }
+
+    /// Audience/purpose line for cards, falling back to the tagline.
+    var audienceLine: String {
+        let custom = (audience ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !custom.isEmpty { return custom }
+        return tagline.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func currencySymbol(for code: String) -> String {
+        switch code.uppercased() {
+        case "USD": return "$"
+        case "EUR": return "€"
+        case "GBP": return "£"
+        case "CAD": return "CA$"
+        case "AUD": return "A$"
+        default: return code.uppercased() + " "
+        }
     }
 
     var spotsLeftText: String? {
@@ -155,6 +218,9 @@ extension Meeting: Codable {
         case longitude
         case isVirtual = "is_virtual"
         case costDescription = "cost_description"
+        case feeCents = "fee_cents"
+        case feeCurrency = "fee_currency"
+        case audience
         case attendeeCount = "attendee_count"
         case attendeeLimit = "attendee_limit"
         case status
@@ -184,6 +250,9 @@ extension Meeting: Codable {
         longitude = try c.decodeIfPresent(Double.self, forKey: .longitude) ?? 0
         isVirtual = try c.decodeIfPresent(Bool.self, forKey: .isVirtual) ?? false
         costDescription = try c.decodeIfPresent(String.self, forKey: .costDescription) ?? "Free"
+        feeCents = try c.decodeIfPresent(Int.self, forKey: .feeCents)
+        feeCurrency = try c.decodeIfPresent(String.self, forKey: .feeCurrency)
+        audience = try c.decodeIfPresent(String.self, forKey: .audience)
         attendeeCount = try c.decodeIfPresent(Int.self, forKey: .attendeeCount) ?? 0
         attendeeLimit = try c.decodeIfPresent(Int.self, forKey: .attendeeLimit)
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? "live"
@@ -212,6 +281,9 @@ extension Meeting: Codable {
         try c.encode(longitude, forKey: .longitude)
         try c.encode(isVirtual, forKey: .isVirtual)
         try c.encode(costDescription, forKey: .costDescription)
+        try c.encodeIfPresent(feeCents, forKey: .feeCents)
+        try c.encodeIfPresent(feeCurrency, forKey: .feeCurrency)
+        try c.encodeIfPresent(audience, forKey: .audience)
         try c.encode(attendeeCount, forKey: .attendeeCount)
         try c.encodeIfPresent(attendeeLimit, forKey: .attendeeLimit)
         try c.encode(status, forKey: .status)
@@ -264,6 +336,14 @@ enum Formatters {
     static let full: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "EEEE, MMMM d 'at' h:mm a"
+        return f
+    }()
+
+    /// Full date plus the device timezone abbreviation (e.g. "EDT"), so
+    /// online attendees know which clock the time follows.
+    static let fullWithZone: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEEE, MMMM d 'at' h:mm a zzz"
         return f
     }()
 

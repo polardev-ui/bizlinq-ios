@@ -68,16 +68,25 @@ final class StoreLogicTests: XCTestCase {
     func testTrialStatusMath() {
         let now = Date()
         XCTAssertEqual(TrialStatus.current(start: nil, now: now, subscribed: false), .notStarted)
+        // New-era trial: 14 days.
+        let era = Calendar.current.date(byAdding: .day, value: 1, to: TrialStatus.cutoverDate)!
+        let eraNow = Calendar.current.date(byAdding: .day, value: 5, to: era)!
         XCTAssertEqual(
-            TrialStatus.current(start: now, now: now, subscribed: true),
+            TrialStatus.current(start: era, now: era, subscribed: true),
             .active(daysLeft: TrialStatus.lengthDays)
         )
-        let fresh = Calendar.current.date(byAdding: .day, value: -5, to: now)!
-        XCTAssertEqual(TrialStatus.current(start: fresh, now: now, subscribed: false), .active(daysLeft: 9))
-        let old = Calendar.current.date(byAdding: .day, value: -40, to: now)!
-        XCTAssertEqual(TrialStatus.current(start: old, now: now, subscribed: false), .expired)
-        let edge = Calendar.current.date(byAdding: .day, value: -14, to: now)!
-        XCTAssertEqual(TrialStatus.current(start: edge, now: now, subscribed: false), .expired)
+        XCTAssertEqual(TrialStatus.current(start: era, now: eraNow, subscribed: false), .active(daysLeft: 9))
+        let eraEdge = Calendar.current.date(byAdding: .day, value: 14, to: era)!
+        XCTAssertEqual(TrialStatus.current(start: era, now: eraEdge, subscribed: false), .expired)
+        // Pre-cutover trials keep their original 30-day terms.
+        let legacy = Calendar.current.date(byAdding: .day, value: -5, to: TrialStatus.cutoverDate)!
+        let legacyNow = Calendar.current.date(byAdding: .day, value: 5, to: legacy)!
+        XCTAssertEqual(
+            TrialStatus.current(start: legacy, now: legacyNow, subscribed: false),
+            .active(daysLeft: 25)
+        )
+        let legacyOld = Calendar.current.date(byAdding: .day, value: -40, to: TrialStatus.cutoverDate)!
+        XCTAssertEqual(TrialStatus.current(start: legacyOld, now: legacyNow, subscribed: false), .expired)
     }
 
     func testRadiusFilterKeepsNearbyAndVirtual() {
@@ -120,6 +129,51 @@ final class StoreLogicTests: XCTestCase {
         store.query = ""
         store.selectedCategory = .technology
         XCTAssertEqual(store.filteredMeetings().map { $0.meeting.title }, ["Tech Mixer"])
+    }
+
+    func testCostFilterTreatsUnknownAsPaid() {
+        var free = meeting(title: "Free one")
+        free.costDescription = "Free"
+        var paid = meeting(title: "Paid one")
+        paid.costDescription = "$25"
+        var unknown = meeting(title: "Unknown one")
+        unknown.costDescription = "See organizer"
+        var page = meeting(title: "Page one")
+        page.costDescription = "Paid (see event page)"
+        var structured = meeting(title: "Structured one")
+        structured.feeCents = 2000
+        structured.feeCurrency = "USD"
+        XCTAssertTrue(free.isFreeEntry)
+        XCTAssertFalse(paid.isFreeEntry)
+        XCTAssertFalse(unknown.isFreeEntry)
+        XCTAssertFalse(page.isFreeEntry)
+        XCTAssertFalse(structured.isFreeEntry)
+        XCTAssertEqual(structured.costBadgeText, "$20")
+        XCTAssertEqual(unknown.costBadgeText, "Fee varies")
+        let store = MeetingStore(meetings: [free, paid, unknown, page, structured], defaults: testDefaults())
+        store.costFilter = .free
+        XCTAssertEqual(store.filteredMeetings().map { $0.meeting.title }, ["Free one"])
+        store.costFilter = .paid
+        XCTAssertEqual(store.filteredMeetings().count, 4)
+        store.costFilter = .any
+        XCTAssertEqual(store.filteredMeetings().count, 5)
+    }
+
+    func testDraftCopiesForwardToFuture() {
+        var draft = MeetingDraft()
+        draft.groupName = "G"
+        draft.contactName = "C"
+        draft.phone = "5551234567"
+        draft.email = "a@b.co"
+        draft.website = "https://b.co"
+        XCTAssertTrue(draft.contactValid)
+        draft.isPaid = true
+        draft.feeAmount = ""
+        XCTAssertFalse(draft.costValid)
+        draft.feeAmount = "25"
+        XCTAssertTrue(draft.costValid)
+        XCTAssertEqual(draft.feeCentsValue, 2500)
+        XCTAssertEqual(draft.costDescriptionValue, "$25")
     }
 
     func testPastMeetingsAreHidden() {

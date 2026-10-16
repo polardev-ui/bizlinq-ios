@@ -10,12 +10,27 @@ enum TrialStatus: Equatable {
 
     static let lengthDays = 14
     static let reminderDays = 7
+    /// Trials that started before the 14-day cutover keep their original
+    /// 30-day terms; only newer trials use 14 days.
+    static let cutoverDate: Date = {
+        var c = DateComponents()
+        c.year = 2026; c.month = 10; c.day = 17
+        c.timeZone = TimeZone(secondsFromGMT: 0)
+        return Calendar.current.date(from: c) ?? Date()
+    }()
+    static let legacyLengthDays = 30
+
+    static func lengthDays(for start: Date?) -> Int {
+        guard let start else { return lengthDays }
+        return start < cutoverDate ? legacyLengthDays : lengthDays
+    }
 
     static func current(start: Date?, now: Date, subscribed: Bool) -> TrialStatus {
-        if subscribed { return .active(daysLeft: TrialStatus.lengthDays) }
+        let total = lengthDays(for: start)
+        if subscribed { return .active(daysLeft: total) }
         guard let start else { return .notStarted }
         let elapsed = Calendar.current.dateComponents([.day], from: start, to: now).day ?? 0
-        let left = lengthDays - elapsed
+        let left = total - elapsed
         if left <= 0 { return .expired }
         return .active(daysLeft: left)
     }
@@ -46,14 +61,15 @@ enum TrialNotifications {
     static func scheduleTrialReminders(start: Date) {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: ids())
+        let total = TrialStatus.lengthDays(for: start)
         for back in 0...TrialStatus.reminderDays {
             let daysLeft = TrialStatus.reminderDays - back
-            let fire = Calendar.current.date(byAdding: .day, value: TrialStatus.lengthDays - daysLeft, to: start) ?? start
+            let fire = Calendar.current.date(byAdding: .day, value: total - daysLeft, to: start) ?? start
             guard fire > Date() else { continue }
             let content = UNMutableNotificationContent()
             content.title = "BizLinq trial"
             if daysLeft == 0 {
-                content.body = "Your 14-day posting trial ends today. Open BizLinq to subscribe or cancel."
+                content.body = "Your posting trial ends today. Open BizLinq to subscribe or cancel."
             } else if daysLeft == 1 {
                 content.body = "Your posting trial ends tomorrow. Subscribe to keep your meetings live."
             } else {

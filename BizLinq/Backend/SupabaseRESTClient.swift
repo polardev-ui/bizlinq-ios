@@ -209,6 +209,9 @@ final class SupabaseRESTClient {
             let longitude: Double
             let host_name: String
             let cost_description: String
+            let fee_cents: Int?
+            let fee_currency: String?
+            let audience: String?
             let is_virtual: Bool
         }
         let payload = Payload(
@@ -227,6 +230,9 @@ final class SupabaseRESTClient {
             longitude: meeting.longitude,
             host_name: meeting.hostName,
             cost_description: meeting.costDescription,
+            fee_cents: meeting.feeCents,
+            fee_currency: meeting.feeCurrency,
+            audience: meeting.audience,
             is_virtual: meeting.isVirtual
         )
         do {

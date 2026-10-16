@@ -26,6 +26,15 @@ enum VisibilityFilter: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// Attendance-cost filter on Discover.
+enum CostFilter: String, CaseIterable, Identifiable {
+    case any = "Any cost"
+    case free = "Free"
+    case paid = "Paid"
+
+    var id: String { rawValue }
+}
+
 @MainActor
 final class MeetingStore: ObservableObject {
     private enum Keys {
@@ -44,6 +53,7 @@ final class MeetingStore: ObservableObject {
     @Published var query: String = ""
     @Published var selectedCategory: MeetingCategory? = nil
     @Published var visibility: VisibilityFilter = .all
+    @Published var costFilter: CostFilter = .any
     @Published var sortByDistance: Bool = true
 
     @Published var userCoordinate: CLLocationCoordinate2D? = nil
@@ -310,6 +320,13 @@ final class MeetingStore: ObservableObject {
             }
             .filter { $0.startsAt > now }
             .filter { selectedCategory == nil || $0.category == selectedCategory! }
+            .filter {
+                switch costFilter {
+                case .any: return true
+                case .free: return $0.isFreeEntry
+                case .paid: return !$0.isFreeEntry
+                }
+            }
             .filter { meeting in
                 guard !q.isEmpty else { return true }
                 let haystack = "\(meeting.title) \(meeting.groupName) \(meeting.city) \(meeting.state) \(meeting.description)".lowercased()
@@ -350,6 +367,11 @@ final class MeetingStore: ObservableObject {
             case .virtual: guard meeting.isVirtual else { return false }
             }
             guard meeting.startsAt > now else { return false }
+            switch costFilter {
+            case .any: break
+            case .free: guard meeting.isFreeEntry else { return false }
+            case .paid: guard !meeting.isFreeEntry else { return false }
+            }
             if !q.isEmpty {
                 let haystack = "\(meeting.title) \(meeting.groupName) \(meeting.city) \(meeting.state) \(meeting.description)".lowercased()
                 guard haystack.contains(q) else { return false }
@@ -359,6 +381,27 @@ final class MeetingStore: ObservableObject {
             guard let user = userCoordinate else { return true }
             return meeting.distanceMiles(from: user) <= cap
         }.count
+    }
+
+    /// Number of non-default filters, for the Filters badge.
+    var activeFilterCount: Int {
+        var n = 0
+        if selectedCategory != nil { n += 1 }
+        if visibility != .all { n += 1 }
+        if costFilter != .any { n += 1 }
+        if !sortByDistance { n += 1 }
+        if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { n += 1 }
+        return n
+    }
+
+    /// Resets search, category, format, cost, and sort to defaults.
+    /// Location persists unless intentionally changed elsewhere.
+    func clearFilters() {
+        query = ""
+        selectedCategory = nil
+        visibility = .all
+        costFilter = .any
+        sortByDistance = true
     }
 
     var locationSummary: String {
@@ -411,6 +454,13 @@ final class MeetingStore: ObservableObject {
     var myMeetings: [Meeting] {
         meetings
             .filter { myMeetingIDs.contains($0.id) }
+            .sorted { $0.startsAt < $1.startsAt }
+    }
+
+    /// Meetings the attendee RSVP'd to, upcoming first. Past RSVPs stay out.
+    var myRSVPs: [Meeting] {
+        meetings
+            .filter { rsvpIDs.contains($0.id) && $0.status == "live" && $0.startsAt > Date() }
             .sorted { $0.startsAt < $1.startsAt }
     }
 

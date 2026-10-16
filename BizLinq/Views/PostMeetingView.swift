@@ -1,24 +1,17 @@
 import SwiftUI
 
+/// Screen 6 — Post a meeting. Prefills an editable draft from the host's
+/// previous listing when available ("Copied from your previous listing.
+/// Review and update."). "Review meeting" leads to Screen 7; nothing
+/// publishes from this screen.
 struct PostMeetingView: View {
     @EnvironmentObject private var store: MeetingStore
     @EnvironmentObject private var subscriptions: SubscriptionManager
     @EnvironmentObject private var auth: AuthManager
 
-    // Listing form fields.
-    @State private var groupName = ""
-    @State private var contactName = ""
-    @State private var phone = ""
-    @State private var email = ""
-    @State private var website = ""
-    @State private var date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
-    @State private var time = Calendar.current.date(bySettingHour: 18, minute: 0, second: 0, of: Date()) ?? Date()
-    @State private var location = ""
-    @State private var category: MeetingCategory = .businessNetworking
+    @State private var draft: MeetingDraft
     @State private var located: LocatedAddress?
     @State private var isLocating = false
-
-    @State private var isSubmitting = false
     @State private var showGeoError = false
     @State private var didPost = false
     @State private var postedTitle = ""
@@ -26,9 +19,47 @@ struct PostMeetingView: View {
     @State private var showingSubscribe = false
     @State private var confirmingCancelTrial = false
     @State private var publishError: String?
+    @State private var isPublishing = false
+    @State private var showingReview = false
+    private let prefilled: Bool
+
+    init(prefill: Meeting? = nil) {
+        if let prefill {
+            var draft = MeetingDraft(from: prefill)
+            // Copied dates must land in the future and still need confirmation.
+            if (draft.meetingDateTime ?? Date.distantPast) <= Date() {
+                let next = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+                draft.date = next
+            }
+            _draft = State(initialValue: draft)
+            prefilled = true
+        } else {
+            _draft = State(initialValue: MeetingDraft())
+            prefilled = false
+        }
+    }
 
     private var trialStatus: TrialStatus {
         TrialStatus.current(start: store.trialStartDate, now: Date(), subscribed: subscriptions.isPosterActive)
+    }
+
+    private var locationReady: Bool {
+        draft.isVirtual ? !draft.onlineAccess.trimmingCharacters(in: .whitespaces).isEmpty : located != nil
+    }
+
+    private var isValid: Bool {
+        draft.contactValid && draft.scheduleValid && draft.costValid && locationReady
+    }
+
+    /// Placeholder coordinate so virtual drafts can build a review preview.
+    private var reviewPlace: LocatedAddress? {
+        if draft.isVirtual {
+            return LocatedAddress(
+                coordinate: store.userCoordinate ?? .init(latitude: 28.54, longitude: -81.38),
+                city: "", state: "", zip: "", label: "Online"
+            )
+        }
+        return located
     }
 
     var body: some View {
@@ -57,6 +88,18 @@ struct PostMeetingView: View {
             .task {
                 await store.refreshTrialFromServer()
             }
+            .navigationDestination(isPresented: $showingReview) {
+                if let place = reviewPlace {
+                    ReviewMeetingView(
+                        draft: draft,
+                        place: place,
+                        confirmTitle: "Publish meeting",
+                        isBusy: isPublishing,
+                        onConfirm: publish,
+                        onEdit: { showingReview = false }
+                    )
+                }
+            }
         }
         .sheet(isPresented: $showingSubscribe) {
             NavigationStack {
@@ -82,43 +125,12 @@ struct PostMeetingView: View {
         }
     }
 
-    // MARK: - Validation
-
-    private var contactValid: Bool {
-        !groupName.trimmingCharacters(in: .whitespaces).isEmpty
-            && !contactName.trimmingCharacters(in: .whitespaces).isEmpty
-            && phone.filter({ $0.isNumber }).count >= 7
-            && email.contains("@") && email.contains(".")
-            && !website.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-
-    private var meetingDateTime: Date? {
-        let calendar = Calendar.current
-        let day = calendar.dateComponents([.year, .month, .day], from: date)
-        let clock = calendar.dateComponents([.hour, .minute], from: time)
-        var merged = DateComponents()
-        merged.year = day.year
-        merged.month = day.month
-        merged.day = day.day
-        merged.hour = clock.hour
-        merged.minute = clock.minute
-        return calendar.date(from: merged)
-    }
-
-    private var isValid: Bool {
-        contactValid
-            && (meetingDateTime ?? Date.distantPast) > Date()
-            && located != nil
-    }
-
-    // MARK: - Form
-
     private var listingForm: some View {
         Form {
             Section {
                 switch trialStatus {
                 case .notStarted:
-                    Text("List your group free. Your first post starts a 14-day trial — then subscribe to keep posting.")
+                    Text("Post your first meeting free — it starts a 14-day trial, then subscribe to keep posting.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 case .active(let days):
@@ -128,67 +140,37 @@ struct PostMeetingView: View {
                 case .expired:
                     EmptyView()
                 }
-            }
-
-            Section("Group") {
-                TextField("Name of group", text: $groupName)
-                Picker("Category", selection: $category) {
-                    ForEach(MeetingCategory.allCases) { option in
-                        Text(option.rawValue).tag(option)
-                    }
-                }
-            }
-
-            Section("Contact") {
-                TextField("Name of contact", text: $contactName)
-                TextField("Phone number", text: $phone)
-                    .keyboardType(.phonePad)
-                TextField("Email", text: $email)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                TextField("Website", text: $website)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-            }
-
-            Section("Meeting") {
-                DatePicker("Date of meeting", selection: $date, in: Date()..., displayedComponents: [.date])
-                DatePicker("Time of meeting", selection: $time, displayedComponents: [.hourAndMinute])
-                TextField("Location (venue, city, state, ZIP)", text: $location)
-                if let located {
-                    Label("Found: \(located.label)", systemImage: "checkmark.circle.fill")
+                if prefilled {
+                    Label("Copied from your previous listing. Review and update.", systemImage: "doc.on.doc")
                         .font(.footnote)
-                        .foregroundStyle(.green)
-                } else {
-                    Button {
-                        locate()
-                    } label: {
-                        if isLocating {
-                            ProgressView()
-                        } else {
-                            Text("Find location")
-                        }
-                    }
-                    .disabled(location.trimmingCharacters(in: .whitespaces).isEmpty || isLocating)
+                        .foregroundStyle(BizStyle.teal)
                 }
             }
+
+            MeetingFormFields(
+                draft: $draft,
+                located: $located,
+                isLocating: $isLocating,
+                showGeoError: $showGeoError
+            )
 
             Section {
                 Button {
-                    submit()
+                    showingReview = true
                 } label: {
-                    if isSubmitting {
-                        ProgressView()
-                    } else {
-                        Text("Publish listing")
-                    }
+                    Text("Review meeting")
                 }
-                .disabled(!isValid || isSubmitting)
+                .disabled(!isValid)
                 if !isValid {
-                    Text("Fill in every field, pick a future date and time, and find the location to publish.")
+                    Text(invalidReason)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+                Button("Discard draft", role: .destructive) {
+                    draft = MeetingDraft()
+                    located = nil
+                }
+                .font(.subheadline)
             }
         }
         .alert("Couldn't locate that address", isPresented: $showGeoError) {
@@ -207,76 +189,50 @@ struct PostMeetingView: View {
         .sheet(isPresented: $showingSignIn) {
             SignInView()
         }
-        .onChange(of: location) { _, _ in
+        .onChange(of: draft.location) { _, _ in
             located = nil
         }
     }
 
-    private func locate() {
-        guard !location.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        isLocating = true
-        Task { @MainActor in
-            if let found = await store.locate(location) {
-                located = found
-            } else {
-                showGeoError = true
-            }
-            isLocating = false
+    private var invalidReason: String {
+        if !draft.contactValid { return "Fill in every group and contact field with a valid email and phone." }
+        if !draft.scheduleValid { return "Pick a future date and time." }
+        if !draft.costValid { return "Enter a valid fee amount for paid events." }
+        if draft.isVirtual && draft.onlineAccess.trimmingCharacters(in: .whitespaces).isEmpty {
+            return "Add online access info for virtual events."
         }
+        if !draft.isVirtual && located == nil { return "Find the location to continue." }
+        return "Complete the form to continue."
     }
 
-    private func submit() {
-        guard isValid, let startsAt = meetingDateTime, let place = located else { return }
-        isSubmitting = true
+    private func publish() {
+        guard let place = reviewPlace else { return }
+        isPublishing = true
         Task { @MainActor in
-            let contact = "Contact: \(contactName.trimmingCharacters(in: .whitespaces)) · \(phone.trimmingCharacters(in: .whitespaces)) · \(email.trimmingCharacters(in: .whitespaces)) · \(website.trimmingCharacters(in: .whitespaces))"
-            let meeting = Meeting(
-                title: groupName.trimmingCharacters(in: .whitespaces),
-                groupName: groupName.trimmingCharacters(in: .whitespaces),
-                category: category,
-                tagline: "\(groupName.trimmingCharacters(in: .whitespaces)) — \(place.city)",
-                description: contact,
-                startsAt: startsAt,
-                venue: location.trimmingCharacters(in: .whitespaces),
-                address: location.trimmingCharacters(in: .whitespaces),
-                city: place.city,
-                state: place.state,
-                zipCode: place.zip,
-                latitude: place.coordinate.latitude,
-                longitude: place.coordinate.longitude,
-                hostName: contactName.trimmingCharacters(in: .whitespaces),
-                attendeeCount: 1,
-                attendeeLimit: nil,
-                isVirtual: false,
-                costDescription: "Free"
-            )
+            let hostName = draft.contactName.trimmingCharacters(in: .whitespaces)
+            let meeting = draft.buildMeeting(place: place, hostName: hostName.isEmpty ? "Host" : hostName)
             do {
                 try await store.publish(meeting)
                 postedTitle = meeting.title
-                reset()
+                draft = MeetingDraft()
+                located = nil
+                isPublishing = false
+                showingReview = false
                 didPost = true
             } catch let error as BackendError {
+                isPublishing = false
                 switch error {
                 case .notSignedIn:
+                    showingReview = false
                     showingSignIn = true
                 case .server(let message):
                     publishError = message
                 }
             } catch {
+                isPublishing = false
                 publishError = error.localizedDescription
             }
-            isSubmitting = false
         }
-    }
-
-    private func reset() {
-        groupName = ""
-        contactName = ""
-        phone = ""
-        email = ""
-        website = ""
-        location = ""
-        located = nil
     }
 }
 
@@ -288,7 +244,7 @@ struct SignInPrompt: View {
             Spacer()
             Image(systemName: "person.badge.key.fill")
                 .font(.system(size: 56))
-                .foregroundStyle(.teal)
+                .foregroundStyle(BizStyle.teal)
             Text("Sign in to post")
                 .font(.title2.bold())
             Text("Posting requires a free BizLinq account. Your first 14 days are free.")
@@ -299,6 +255,7 @@ struct SignInPrompt: View {
                 showingSignIn = true
             }
             .buttonStyle(.borderedProminent)
+            .tint(BizStyle.teal)
             Spacer()
         }
         .padding()
@@ -329,6 +286,7 @@ struct TrialExpiredView: View {
                 showingSubscribe = true
             }
             .buttonStyle(.borderedProminent)
+            .tint(BizStyle.teal)
             Button("Cancel", role: .destructive) {
                 confirmingCancelTrial = true
             }
@@ -357,6 +315,7 @@ struct TrialPausedView: View {
                 showingSubscribe = true
             }
             .buttonStyle(.borderedProminent)
+            .tint(BizStyle.teal)
             Spacer()
         }
         .padding()
@@ -375,12 +334,13 @@ struct PostSuccessView: View {
                 .foregroundStyle(.green)
             Text("Meeting published")
                 .font(.title2.bold())
-            Text("\"\(title)\" is now live for people across the US to discover. Find it under My Posts.")
+            Text("\"\(title)\" is now live for people across the US to discover. Find it under Host.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
             Button("Done", action: onDone)
                 .buttonStyle(.borderedProminent)
+                .tint(BizStyle.teal)
             Spacer()
         }
         .padding()

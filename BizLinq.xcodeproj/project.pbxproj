@@ -28,6 +28,13 @@
 		7D9D1182113347368A2FA0E0 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 643F495D40734267B26079B5 /* Config.swift */; };
 		852EF145C8F7412A88474237 /* StoreLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DBDBB37218249AA940251F0 /* StoreLogicTests.swift */; };
 		C83F5B6D1E24A7B93D7F5E33 /* BackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B71E4A2C9D03F5A81C6E4D22 /* BackendTests.swift */; };
+		B22DF12E3C55F112D0E9F832 /* BizDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE01D2B44F001C9D8E721 /* BizDesign.swift */; };
+		D44FA34A5E77B334F2AB1944 /* MeetingDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33EF23F4D66A223E1FA0833 /* MeetingDraft.swift */; };
+		F66BC56C7A99D556B4CD3B666 /* MeetingFormFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = E55AB45B6F88C445A3BC2A555 /* MeetingFormFields.swift */; };
+		2B83DE78C9BBF778D6EF5D888 /* ReviewMeetingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A72CD67B8AAE667C5DE4C777 /* ReviewMeetingView.swift */; };
+		4DA5FA9AEBDDE99AF8AB7AAAA /* GroupProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C94EF89DACCD889E7FA6E999 /* GroupProfileView.swift */; };
+		6FC7BCC1ADFF01BCCACD9CCCC /* HostDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB6ABB0FCEEF0ABB9BC8BBBB /* HostDashboardView.swift */; };
+		8BE9DEE3CFBB23EEECEEFFEEE /* AttendeeMeetingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AD8CDD2BEAA12CDDBDDEADDD /* AttendeeMeetingsView.swift */; };
 		9E57F7F7CCCF4A6CA6132E0B /* MyMeetingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6237E61B6994756BC82EB17 /* MyMeetingsView.swift */; };
 		F52E28B73D05F2C91B4A66E2 /* EditMeetingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E41D17A62C94E1B80A3F55D1 /* EditMeetingView.swift */; };
 		AAF800AD1D774DD68D30F764 /* PostMeetingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191987541758470B83C14E5C /* PostMeetingView.swift */; };
@@ -82,6 +89,13 @@
 		A42BC82519B246449B41F784 /* Meeting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Meeting.swift; sourceTree = "<group>"; };
 		A7984324EA7441E98482CADA /* ZipSearchSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipSearchSheet.swift; sourceTree = "<group>"; };
 		B1B84050FA304D27A2F07FAF /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		A11CE01D2B44F001C9D8E721 /* BizDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BizDesign.swift; sourceTree = "<group>"; };
+		C33EF23F4D66A223E1FA0833 /* MeetingDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingDraft.swift; sourceTree = "<group>"; };
+		E55AB45B6F88C445A3BC2A555 /* MeetingFormFields.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingFormFields.swift; sourceTree = "<group>"; };
+		1A72CD67B8AAE667C5DE4C777 /* ReviewMeetingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewMeetingView.swift; sourceTree = "<group>"; };
+		3C94EF89DACCD889E7FA6E999 /* GroupProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupProfileView.swift; sourceTree = "<group>"; };
+		5EB6ABB0FCEEF0ABB9BC8BBBB /* HostDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostDashboardView.swift; sourceTree = "<group>"; };
+		7AD8CDD2BEAA12CDDBDDEADDD /* AttendeeMeetingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttendeeMeetingsView.swift; sourceTree = "<group>"; };
 		B6237E61B6994756BC82EB17 /* MyMeetingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyMeetingsView.swift; sourceTree = "<group>"; };
 		E41D17A62C94E1B80A3F55D1 /* EditMeetingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditMeetingView.swift; sourceTree = "<group>"; };
 		B659A979F3FD4E959AB4DB3A /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
@@ -114,6 +128,7 @@
 			isa = PBXGroup;
 			children = (
 				A42BC82519B246449B41F784 /* Meeting.swift */,
+				C33EF23F4D66A223E1FA0833 /* MeetingDraft.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -156,6 +171,12 @@
 			children = (
 				3D34843DC69347C4B6F2098F /* BrowseView.swift */,
 				1FE68E5D3D78400392D7267C /* MeetingDetailView.swift */,
+				A11CE01D2B44F001C9D8E721 /* BizDesign.swift */,
+				E55AB45B6F88C445A3BC2A555 /* MeetingFormFields.swift */,
+				1A72CD67B8AAE667C5DE4C777 /* ReviewMeetingView.swift */,
+				3C94EF89DACCD889E7FA6E999 /* GroupProfileView.swift */,
+				5EB6ABB0FCEEF0ABB9BC8BBBB /* HostDashboardView.swift */,
+				7AD8CDD2BEAA12CDDBDDEADDD /* AttendeeMeetingsView.swift */,
 				B6237E61B6994756BC82EB17 /* MyMeetingsView.swift */,
 				E41D17A62C94E1B80A3F55D1 /* EditMeetingView.swift */,
 				B1B84050FA304D27A2F07FAF /* OnboardingView.swift */,
@@ -338,6 +359,13 @@
 				38CF11E7F4A7444DA9666C1F /* SubscriptionManager.swift in Sources */,
 				BF7552985E094CC096511BB8 /* BrowseView.swift in Sources */,
 				259BBFB3C92A4FC4BF566200 /* MeetingDetailView.swift in Sources */,
+				B22DF12E3C55F112D0E9F832 /* BizDesign.swift in Sources */,
+				D44FA34A5E77B334F2AB1944 /* MeetingDraft.swift in Sources */,
+				F66BC56C7A99D556B4CD3B666 /* MeetingFormFields.swift in Sources */,
+				2B83DE78C9BBF778D6EF5D888 /* ReviewMeetingView.swift in Sources */,
+				4DA5FA9AEBDDE99AF8AB7AAAA /* GroupProfileView.swift in Sources */,
+				6FC7BCC1ADFF01BCCACD9CCCC /* HostDashboardView.swift in Sources */,
+				8BE9DEE3CFBB23EEECEEFFEEE /* AttendeeMeetingsView.swift in Sources */,
 				9E57F7F7CCCF4A6CA6132E0B /* MyMeetingsView.swift in Sources */,
 				F52E28B73D05F2C91B4A66E2 /* EditMeetingView.swift in Sources */,
 				36499DD08D1C4A59BE37C69F /* OnboardingView.swift in Sources */,

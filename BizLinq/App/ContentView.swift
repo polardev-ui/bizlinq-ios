@@ -9,17 +9,17 @@ struct ContentView: View {
         TabView(selection: $tab) {
             BrowseView(autoOpenDetail: autoOpenDetail)
                 .tabItem {
-                    Label("Discover", systemImage: "antenna.radiowaves.left.and.right")
+                    Label("Discover", systemImage: "magnifyingglass")
                 }
                 .tag(0)
-            PostMeetingView()
+            AttendeeMeetingsView()
                 .tabItem {
-                    Label("Post", systemImage: "plus.circle.fill")
+                    Label("My Meetings", systemImage: "ticket.fill")
                 }
                 .tag(1)
-            MyMeetingsView()
+            HostDashboardView()
                 .tabItem {
-                    Label("My Posts", systemImage: "tray.full")
+                    Label("Host", systemImage: "megaphone.fill")
                 }
                 .tag(2)
             ProfileView()
