@@ -1,12 +1,22 @@
 import SwiftUI
+import UIKit
 
 /// Shared BizLinq style tokens. Teal carries primary action/selection;
 /// category color is used sparingly (selected filters, badges).
 enum BizStyle {
     static let teal = Color(red: 0.0, green: 0.56, blue: 0.58) // ~#008F95
-    static let ink = Color(red: 0.09, green: 0.15, blue: 0.20) // ~#182632
-    static let canvas = Color(red: 0.957, green: 0.965, blue: 0.973) // ~#F4F6F8
-    static let hairline = Color(red: 0.878, green: 0.902, blue: 0.918) // ~#E0E6EA
+    /// Near-black in light mode, near-white in dark mode.
+    static let ink = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(white: 0.96, alpha: 1.0)
+            : UIColor(red: 0.09, green: 0.15, blue: 0.20, alpha: 1.0) // ~#182632
+    })
+    static let canvas = Color(.systemGroupedBackground)
+    static let hairline = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(white: 1.0, alpha: 0.14)
+            : UIColor(red: 0.878, green: 0.902, blue: 0.918, alpha: 1.0) // ~#E0E6EA
+    })
     static let cardRadius: CGFloat = 16
     static let gutter: CGFloat = 16
 }
@@ -150,7 +160,7 @@ struct BizMeetingCard: View {
             HStack(spacing: 4) {
                 Image(systemName: ranked.meeting.isVirtual ? "video.fill" : "mappin.circle.fill")
                 Text(ranked.meeting.locationLine).lineLimit(1)
-                if let text = store.distanceText(for: ranked.meeting) {
+                if !ranked.meeting.isVirtual, let text = store.distanceText(for: ranked.meeting) {
                     Text("· \(text)")
                 }
             }

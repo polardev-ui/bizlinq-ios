@@ -56,11 +56,18 @@ struct ReviewMeetingView: View {
                     if !preview.audienceLine.isEmpty {
                         BizMetaRow(icon: "person.2.fill", title: preview.audienceLine)
                     }
+                    let contactBits = [draft.contactName, draft.phone, draft.email]
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
                     BizMetaRow(
-                        icon: "person.fill", title: "Host: \(draft.contactName)",
-                        detail: "\(draft.phone) · \(draft.email)"
+                        icon: "person.fill",
+                        title: draft.contactName.trimmingCharacters(in: .whitespaces).isEmpty
+                            ? "Host" : "Host: \(draft.contactName)",
+                        detail: contactBits.isEmpty ? nil : contactBits.joined(separator: " · ")
                     )
-                    BizMetaRow(icon: "globe", title: draft.website)
+                    if !draft.website.trimmingCharacters(in: .whitespaces).isEmpty {
+                        BizMetaRow(icon: "globe", title: draft.website)
+                    }
                 }
                 .padding(14)
                 .background(Color(.systemBackground))

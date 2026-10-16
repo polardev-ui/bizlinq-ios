@@ -152,19 +152,16 @@ struct MeetingDraft {
     }
 
     static func parseContact(_ description: String) -> (name: String, phone: String, email: String, website: String) {
-        var text = description
-        if let range = text.range(of: "Contact: ") {
-            text = String(text[range.upperBound...])
-        }
+        let blank = (name: "", phone: "", email: "", website: "")
+        // Only "Contact: ..." blobs (written by the listing form) parse.
+        // Curated descriptions stay out of the contact fields.
+        guard description.hasPrefix("Contact: ") else { return blank }
+        var text = String(description.dropFirst("Contact: ".count))
         if let range = text.range(of: " More info:") {
             text = String(text[..<range.lowerBound])
         }
         let parts = text.components(separatedBy: "·").map { $0.trimmingCharacters(in: .whitespaces) }
-        return (
-            name: parts.indices.contains(0) ? parts[0] : "",
-            phone: parts.indices.contains(1) ? parts[1] : "",
-            email: parts.indices.contains(2) ? parts[2] : "",
-            website: parts.indices.contains(3) ? parts[3] : ""
-        )
+        guard parts.count == 4 else { return blank }
+        return (name: parts[0], phone: parts[1], email: parts[2], website: parts[3])
     }
 }

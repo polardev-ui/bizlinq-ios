@@ -92,7 +92,7 @@ struct MeetingDetailView: View {
                             detail: "\(meeting.address), \(meeting.city), \(meeting.state) \(meeting.zipCode)"
                         )
                     }
-                    if let text = store.distanceText(for: meeting) {
+                    if !meeting.isVirtual, let text = store.distanceText(for: meeting) {
                         BizMetaRow(icon: "car.fill", title: text, detail: "Straight-line distance")
                     }
                     BizMetaRow(
@@ -169,7 +169,7 @@ struct MeetingDetailView: View {
                 }
             }
             .padding(BizStyle.gutter)
-            .padding(.bottom, 90)
+            .padding(.bottom, 170)
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Details")
