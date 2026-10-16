@@ -43,10 +43,10 @@ Then add the **Subscription Display Name + Description** (Add Localization → E
 - Display Name: `Poster Monthly`
 - Description: `Post a networking meeting every week. Cancel anytime.`
 
-Then add the **Introductory Offer** (this is the 30-day free trial):
+Then add the **Introductory Offer** (this is the 14-day free trial):
 
 1. In the subscription's settings → **Introductory Offers** → **+**.
-2. Offer type: **Free Trial**. Duration: **1 Month** (30 days).
+2. Offer type: **Free Trial**. Duration: **2 Weeks** (14 days).
 3. Save. (One trial per subscription group is standard — a user who trials Monthly won't get a second trial on Annual.)
 
 Save the subscription.
@@ -69,7 +69,7 @@ Localization → English (U.S.):
 - Display Name: `Poster Annual`
 - Description: `Post a networking meeting every week. About 2 months free vs monthly.`
 
-Add the same **Introductory Offer** as Monthly: **Free Trial**, **1 Month**. Because both products live in one group, a user gets a single 30-day trial total, then pays for whichever plan they picked.
+Add the same **Introductory Offer** as Monthly: **Free Trial**, **2 Weeks**. Because both products live in one group, a user gets a single 14-day trial total, then pays for whichever plan they picked.
 
 Save.
 

@@ -6,7 +6,7 @@
       "internalID" : "BIZLINQ-MONTHLY-001",
       "localizations" : [
         {
-          "description" : "Post a networking meeting every week. Cancel anytime.",
+          "description" : "Post unlimited networking meetings. Cancel anytime.",
           "displayName" : "Poster Monthly",
           "locale" : "en_US"
         }
@@ -21,7 +21,7 @@
       "internalID" : "BIZLINQ-ANNUAL-001",
       "localizations" : [
         {
-          "description" : "Post a networking meeting every week. About 2 months free vs monthly.",
+          "description" : "Post unlimited networking meetings. About 2 months free vs monthly.",
           "displayName" : "Poster Annual",
           "locale" : "en_US"
         }

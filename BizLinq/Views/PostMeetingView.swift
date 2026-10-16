@@ -49,8 +49,6 @@ struct PostMeetingView: View {
                             confirmingCancelTrial: $confirmingCancelTrial
                         )
                     }
-                } else if !store.canPostBySchedule {
-                    CooldownView(nextDate: store.nextEligiblePostDate)
                 } else {
                     listingForm
                 }
@@ -120,7 +118,7 @@ struct PostMeetingView: View {
             Section {
                 switch trialStatus {
                 case .notStarted:
-                    Text("List your group free. Your first post starts a 30-day trial — then subscribe to keep posting.")
+                    Text("List your group free. Your first post starts a 14-day trial — then subscribe to keep posting.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 case .active(let days):
@@ -261,8 +259,6 @@ struct PostMeetingView: View {
                 switch error {
                 case .notSignedIn:
                     showingSignIn = true
-                case .weeklyLimit:
-                    publishError = nil // Cooldown screen appears automatically.
                 case .server(let message):
                     publishError = message
                 }
@@ -295,7 +291,7 @@ struct SignInPrompt: View {
                 .foregroundStyle(.teal)
             Text("Sign in to post")
                 .font(.title2.bold())
-            Text("Posting requires a free BizLinq account. Your first 30 days are free.")
+            Text("Posting requires a free BizLinq account. Your first 14 days are free.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
@@ -322,7 +318,7 @@ struct TrialExpiredView: View {
             Image(systemName: "calendar.badge.exclamationmark")
                 .font(.system(size: 56))
                 .foregroundStyle(.orange)
-            Text("Your 30-day trial ended")
+            Text("Your 14-day trial ended")
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
             Text("Subscribe to keep posting your meetings, or cancel and browse free like everyone else.")
@@ -364,35 +360,6 @@ struct TrialPausedView: View {
             Spacer()
         }
         .padding()
-    }
-}
-
-struct CooldownView: View {
-    let nextDate: Date?
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "calendar.badge.clock")
-                .font(.system(size: 56))
-                .foregroundStyle(.teal)
-            Text("You're all posted for this week")
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
-            Text("Posters can publish 1 meeting every 7 days. " + nextDateText)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-            Spacer()
-        }
-        .padding()
-    }
-
-    private var nextDateText: String {
-        if let nextDate {
-            return "You can post again after \(Formatters.dateLine(for: nextDate))."
-        }
-        return "Check back soon."
     }
 }
 

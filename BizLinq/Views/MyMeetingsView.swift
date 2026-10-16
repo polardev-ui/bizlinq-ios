@@ -16,22 +16,16 @@ struct MyMeetingsView: View {
                             VStack(alignment: .leading) {
                                 Text(subscriptions.activePlan?.name ?? "Poster plan active")
                                     .font(.headline)
-                                if store.canPostBySchedule {
-                                    Text("You can publish this week")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                } else if let next = store.nextEligiblePostDate {
-                                    Text("Next post after \(Formatters.dateLine(for: next))")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
+                                Text("Post as often as you like")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     } else {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("You don't have a poster plan yet")
                                 .font(.headline)
-                            Text("Browsing is free. A plan lets you publish 1 meeting per week.")
+                            Text("Browsing is free. A plan lets you publish unlimited meetings.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             Button("See poster plans") {
@@ -76,6 +70,7 @@ struct MyMeetingRow: View {
     @EnvironmentObject private var store: MeetingStore
     let meeting: Meeting
     @State private var confirmingCancel = false
+    @State private var editing: Meeting?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -92,6 +87,10 @@ struct MyMeetingRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
+                Button("Edit") {
+                    editing = meeting
+                }
+                .font(.subheadline)
                 Button("Cancel", role: .destructive) {
                     confirmingCancel = true
                 }
@@ -99,13 +98,18 @@ struct MyMeetingRow: View {
             }
         }
         .padding(.vertical, 4)
+        .sheet(item: $editing) { meeting in
+            NavigationStack {
+                EditMeetingView(meeting: meeting)
+            }
+        }
         .confirmationDialog("Cancel this meeting?", isPresented: $confirmingCancel, titleVisibility: .visible) {
             Button("Cancel meeting", role: .destructive) {
                 Task { await store.cancelMeeting(meeting) }
             }
             Button("Keep it", role: .cancel) {}
         } message: {
-            Text("This removes the listing. Your 7-day posting clock keeps running.")
+            Text("This removes the listing.")
         }
     }
 }

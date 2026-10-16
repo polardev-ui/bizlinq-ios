@@ -73,25 +73,11 @@ final class StoreLogicTests: XCTestCase {
             .active(daysLeft: TrialStatus.lengthDays)
         )
         let fresh = Calendar.current.date(byAdding: .day, value: -5, to: now)!
-        XCTAssertEqual(TrialStatus.current(start: fresh, now: now, subscribed: false), .active(daysLeft: 25))
+        XCTAssertEqual(TrialStatus.current(start: fresh, now: now, subscribed: false), .active(daysLeft: 9))
         let old = Calendar.current.date(byAdding: .day, value: -40, to: now)!
         XCTAssertEqual(TrialStatus.current(start: old, now: now, subscribed: false), .expired)
-        let edge = Calendar.current.date(byAdding: .day, value: -30, to: now)!
+        let edge = Calendar.current.date(byAdding: .day, value: -14, to: now)!
         XCTAssertEqual(TrialStatus.current(start: edge, now: now, subscribed: false), .expired)
-    }
-
-    func testWeeklyLimitBlocksSecondPost() {
-        let store = MeetingStore(meetings: [], defaults: testDefaults())
-        XCTAssertTrue(store.canPostBySchedule)
-        XCTAssertNil(store.nextEligiblePostDate)
-
-        store.lastPostDate = Date().addingTimeInterval(-86400)
-        XCTAssertFalse(store.canPostBySchedule)
-        XCTAssertNotNil(store.nextEligiblePostDate)
-
-        store.lastPostDate = Date().addingTimeInterval(-8 * 86400)
-        XCTAssertTrue(store.canPostBySchedule)
-        XCTAssertNil(store.nextEligiblePostDate)
     }
 
     func testRadiusFilterKeepsNearbyAndVirtual() {

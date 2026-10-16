@@ -25,11 +25,16 @@ struct PaywallView: View {
                     Text("Attendees browse and join for free. Hosts pay to post.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
+                    Text("They don't need to know your group's name. They just need to be looking for their next connection.")
+                        .font(.subheadline.italic())
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
                     PaywallBullet(icon: "antenna.radiowaves.left.and.right", text: "Advertise to people across the entire US")
-                    PaywallBullet(icon: "calendar.badge.clock", text: "1 live post every 7 days keeps quality high")
+                    PaywallBullet(icon: "calendar.badge.clock", text: "Unlimited live posts — publish as often as you like")
                     PaywallBullet(icon: "person.2.fill", text: "Free RSVPs - see exactly who is coming")
                 }
                 .padding()
@@ -56,7 +61,7 @@ struct PaywallView: View {
                             .frame(maxWidth: .infinity)
                             .padding()
                     } else if subscriptions.isTrialEligible(selected) {
-                        Text("Start 30-day free trial")
+                        Text("Start 14-day free trial")
                             .frame(maxWidth: .infinity)
                             .padding()
                     } else {
@@ -80,7 +85,7 @@ struct PaywallView: View {
                 }
                 .font(.subheadline)
 
-                Text("Posting is limited to 1 meeting per 7 days on every plan. Subscriptions renew automatically until cancelled in your App Store settings.")
+                Text("Post unlimited meetings on every plan. Subscriptions renew automatically until cancelled in your App Store settings.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -134,7 +139,7 @@ struct PlanCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if trialEligible {
-                    Text("30 days free, then \(plan.price) \(plan.cadence)")
+                    Text("14 days free, then \(plan.price) \(plan.cadence)")
                         .font(.caption.bold())
                         .foregroundStyle(.teal)
                 }

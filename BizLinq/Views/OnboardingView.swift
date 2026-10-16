@@ -34,7 +34,7 @@ struct OnboardingView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     FeatureRow(icon: "radar", title: "Discover meetups", text: "Search by ZIP code and driving radius, anywhere in the US.")
                     FeatureRow(icon: "ticket", title: "Posting costs money", text: "Hosts pay for a poster plan, so listings stay real.")
-                    FeatureRow(icon: "calendar.badge.clock", title: "One post per week", text: "Posters can publish 1 meeting every 7 days.")
+                    FeatureRow(icon: "calendar.badge.clock", title: "Post without limits", text: "Publish as many meetings as you like — no weekly caps.")
                 }
                 .padding()
                 .background(Color(.secondarySystemBackground))

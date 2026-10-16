@@ -2,15 +2,12 @@ import Foundation
 
 enum BackendError: LocalizedError, Equatable {
     case notSignedIn
-    case weeklyLimit
     case server(String)
 
     var errorDescription: String? {
         switch self {
         case .notSignedIn:
             return "Sign in to continue."
-        case .weeklyLimit:
-            return "Posters can publish 1 meeting every 7 days."
         case .server(let message):
             return message
         }
@@ -20,8 +17,8 @@ enum BackendError: LocalizedError, Equatable {
 protocol BackendServiceProtocol {
     func fetchMeetings() async throws -> [Meeting]
     func fetchMyMeetings(userID: UUID) async throws -> [Meeting]
-    func fetchLastPostDate(userID: UUID) async throws -> Date?
     func postMeeting(_ meeting: Meeting) async throws -> Meeting
+    func updateMeeting(_ meeting: Meeting) async throws -> Meeting
     func cancelMeeting(id: UUID) async throws
     func setRSVP(meetingID: UUID, userID: UUID, rsvp: Bool) async throws
     func submitReport(meetingID: UUID, userID: UUID, reason: String) async throws
@@ -94,17 +91,17 @@ final class SupabaseBackendService: BackendServiceProtocol {
         }
     }
 
-    func fetchLastPostDate(userID: UUID) async throws -> Date? {
+    func postMeeting(_ meeting: Meeting) async throws -> Meeting {
         do {
-            return try await client.getLastPostDate(userID: userID)
+            return try await client.insertMeeting(meeting)
         } catch {
             throw mapError(error)
         }
     }
 
-    func postMeeting(_ meeting: Meeting) async throws -> Meeting {
+    func updateMeeting(_ meeting: Meeting) async throws -> Meeting {
         do {
-            return try await client.insertMeeting(meeting)
+            return try await client.updateMeeting(meeting)
         } catch {
             throw mapError(error)
         }

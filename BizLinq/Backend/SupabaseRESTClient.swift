@@ -178,11 +178,6 @@ final class SupabaseRESTClient {
         try await get(path: "/rest/v1/meetings?select=*&host_id=eq.\(userID.uuidString)&order=starts_at.asc")
     }
 
-    func getLastPostDate(userID: UUID) async throws -> Date? {
-        let rows: [Meeting] = try await get(path: "/rest/v1/meetings?select=*&host_id=eq.\(userID.uuidString)&order=created_at.desc&limit=1")
-        return rows.first?.createdAt
-    }
-
     func insertMeeting(_ meeting: Meeting) async throws -> Meeting {
         do {
             let rows: [Meeting] = try await post(path: "/rest/v1/meetings", body: meeting, prefer: "return=representation")
@@ -191,9 +186,58 @@ final class SupabaseRESTClient {
             }
             return created
         } catch let error as APIError {
-            if error.code == "42501" {
-                throw BackendError.weeklyLimit
+            throw BackendError.server(error.message ?? "Request failed.")
+        }
+    }
+
+    /// Saves the host's edits to an existing meeting. Only editable listing
+    /// fields are sent; ownership and server-stamped columns stay untouched.
+    func updateMeeting(_ meeting: Meeting) async throws -> Meeting {
+        struct Payload: Encodable {
+            let title: String
+            let group_name: String
+            let category: String
+            let tagline: String
+            let description: String
+            let starts_at: String
+            let venue: String
+            let address: String
+            let city: String
+            let state: String
+            let zip_code: String
+            let latitude: Double
+            let longitude: Double
+            let host_name: String
+            let cost_description: String
+            let is_virtual: Bool
+        }
+        let payload = Payload(
+            title: meeting.title,
+            group_name: meeting.groupName,
+            category: meeting.category.rawValue,
+            tagline: meeting.tagline,
+            description: meeting.description,
+            starts_at: Meeting.isoString(meeting.startsAt),
+            venue: meeting.venue,
+            address: meeting.address,
+            city: meeting.city,
+            state: meeting.state,
+            zip_code: meeting.zipCode,
+            latitude: meeting.latitude,
+            longitude: meeting.longitude,
+            host_name: meeting.hostName,
+            cost_description: meeting.costDescription,
+            is_virtual: meeting.isVirtual
+        )
+        do {
+            let rows: [Meeting] = try await patchReturning(
+                path: "/rest/v1/meetings?id=eq.\(meeting.id.uuidString)", body: payload
+            )
+            guard let updated = rows.first else {
+                throw BackendError.server("The server did not return the updated meeting.")
             }
+            return updated
+        } catch let error as APIError {
             throw BackendError.server(error.message ?? "Request failed.")
         }
     }
@@ -292,6 +336,14 @@ final class SupabaseRESTClient {
         request.httpBody = try encoder.encode(body)
         let (data, response) = try await urlSession.data(for: request)
         try validate(response: response, data: data, path: path)
+    }
+
+    private func patchReturning<Req: Encodable, Resp: Decodable>(path: String, body: Req) async throws -> Resp {
+        var request = try request(path: path, method: "PATCH", bearer: await bearer(), prefer: "return=representation")
+        request.httpBody = try encoder.encode(body)
+        let (data, response) = try await urlSession.data(for: request)
+        try validate(response: response, data: data, path: path)
+        return try decoder.decode(Resp.self, from: data)
     }
 
     private func delete(path: String) async throws {

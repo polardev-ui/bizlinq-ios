@@ -16,7 +16,7 @@ Every meeting can be reported from its detail screen, and any host can be blocke
 
 ## Subscriptions and refunds
 
-Subscriptions start with a 30-day free trial (one per account), then renew automatically at $10/month or $99/year until cancelled (manage or cancel anytime in iPhone Settings → Apple ID → Subscriptions). All billing, renewals, and refunds are handled by Apple under Apple's terms.
+Subscriptions start with a 14-day free trial (one per account), then renew automatically at $10/month or $99/year until cancelled (manage or cancel anytime in iPhone Settings → Apple ID → Subscriptions). All billing, renewals, and refunds are handled by Apple under Apple's terms.
 
 ## Acceptable use
 

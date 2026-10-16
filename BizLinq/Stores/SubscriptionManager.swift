@@ -19,7 +19,7 @@ struct SubscriptionPlan: Identifiable, Hashable {
         name: "Poster Monthly",
         price: "$10",
         cadence: "per month",
-        blurb: "Post a meeting every week. Cancel anytime.",
+        blurb: "Post unlimited meetings. Cancel anytime.",
         badge: "Most popular",
         systemImage: "calendar.badge.clock"
     )
@@ -29,7 +29,7 @@ struct SubscriptionPlan: Identifiable, Hashable {
         name: "Poster Annual",
         price: "$99",
         cadence: "per year",
-        blurb: "Same weekly posting. About 2 months free vs monthly.",
+        blurb: "Same unlimited posting. About 2 months free vs monthly.",
         badge: "Best value",
         systemImage: "crown.fill"
     )
@@ -47,7 +47,7 @@ final class SubscriptionManager: ObservableObject {
     @Published var products: [Product] = []
     @Published var isPurchasing: Bool = false
     @Published var storeError: String?
-    /// Product IDs currently eligible for the 30-day free trial.
+    /// Product IDs currently eligible for the 14-day free trial.
     /// Determined by the App Store (one trial per subscription group).
     @Published var trialEligibleIDs: Set<String> = []
     /// Last known-good entitlement, cached so posting still works offline.

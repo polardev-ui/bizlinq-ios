@@ -91,7 +91,7 @@ struct ProfileView: View {
                             VStack(alignment: .leading) {
                                 Text(subscriptions.activePlan?.name ?? "Poster plan")
                                     .font(.headline)
-                                Text("1 live post every 7 days")
+                                Text("Unlimited live posts")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 if let expiry = subscriptions.subscriptionExpiry {
@@ -117,7 +117,7 @@ struct ProfileView: View {
                 Section("How BizLinq works") {
                     Label("Free to view and join meetings", systemImage: "eye.fill")
                     Label("Costs money to post a meeting", systemImage: "ticket.fill")
-                    Label("1 post per poster every 7 days", systemImage: "calendar.badge.clock")
+                    Label("Unlimited posts, editable anytime", systemImage: "calendar.badge.clock")
                 }
 
                 Section {

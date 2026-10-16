@@ -1,14 +1,14 @@
 import Foundation
 import UserNotifications
 
-/// 30-day poster trial: first listing starts the clock (server-stamped, so
-/// reinstalls don't reset it). After day 30, posting requires a subscription.
+/// 14-day poster trial: first listing starts the clock (server-stamped, so
+/// reinstalls don't reset it). After day 14, posting requires a subscription.
 enum TrialStatus: Equatable {
     case notStarted
     case active(daysLeft: Int)
     case expired
 
-    static let lengthDays = 30
+    static let lengthDays = 14
     static let reminderDays = 7
 
     static func current(start: Date?, now: Date, subscribed: Bool) -> TrialStatus {
@@ -28,7 +28,7 @@ enum TrialStatus: Equatable {
 
 /// Local notifications for the trial countdown. iOS UserNotifications is the
 /// whole "library" here — no dependency needed. Eight reminders: daily for
-/// the last 7 days, plus one on day 30 itself.
+/// the last 7 days, plus one on day 14 itself.
 enum TrialNotifications {
     private static func ids() -> [String] {
         (0...TrialStatus.reminderDays).map { "bizlinq.trial-day\($0)" }
@@ -53,7 +53,7 @@ enum TrialNotifications {
             let content = UNMutableNotificationContent()
             content.title = "BizLinq trial"
             if daysLeft == 0 {
-                content.body = "Your 30-day posting trial ends today. Open BizLinq to subscribe or cancel."
+                content.body = "Your 14-day posting trial ends today. Open BizLinq to subscribe or cancel."
             } else if daysLeft == 1 {
                 content.body = "Your posting trial ends tomorrow. Subscribe to keep your meetings live."
             } else {

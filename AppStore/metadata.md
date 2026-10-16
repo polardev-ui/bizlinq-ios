@@ -4,7 +4,7 @@
 
 **Promotional Text** (optional, editable without review):
 ```
-Find business networking meetings near you. Hosts post free for 30 days, then $10/mo.
+Find business networking meetings near you. Hosts post free for 14 days, then $10/mo.
 ```
 
 **Description:**
@@ -20,9 +20,9 @@ FOR ATTENDEES (FREE)
 • Virtual events from all over the country
 
 FOR HOSTS
-• Advertise your networking group to people actively looking for events
-• One simple poster plan — $10/month or $99/year, with a 30-day free trial
-• One live post every 7 days keeps every listing fresh and real
+• Advertise your networking group to people actively looking for events — they don't need to know your group's name, they just need to be looking for their next connection
+• One simple poster plan — $10/month or $99/year, with a 14-day free trial
+• Unlimited live posts, and edit any live listing anytime
 • Track RSVPs and grow your group week after week
 
 HOW IT WORKS

@@ -28,14 +28,9 @@ enum VisibilityFilter: String, CaseIterable, Identifiable {
 
 @MainActor
 final class MeetingStore: ObservableObject {
-    /// Business rule: posters may publish one meeting per 7 days.
-    /// Enforced server-side by Postgres RLS; mirrored here for instant UX.
-    static let postCooldown: TimeInterval = 7 * 24 * 60 * 60
-
     private enum Keys {
         static let zip = "bizlinq.zip"
         static let radius = "bizlinq.radius"
-        static let lastPost = "bizlinq.lastPostDate"
         static let myIDs = "bizlinq.myMeetingIDs"
         static let rsvps = "bizlinq.rsvpIDs"
         static let blocked = "bizlinq.blockedHostIDs"
@@ -57,11 +52,10 @@ final class MeetingStore: ObservableObject {
 
     @Published var myMeetingIDs: Set<UUID> = []
     @Published var rsvpIDs: Set<UUID> = []
-    @Published var lastPostDate: Date? = nil
     @Published var backendError: String? = nil
     /// Hosts the user has blocked. Their meetings are hidden everywhere.
     @Published var blockedHostIDs: Set<UUID> = []
-    /// Start of the 30-day posting trial (server-stamped, cached locally).
+    /// Start of the 14-day posting trial (server-stamped, cached locally).
     @Published var trialStartDate: Date? = nil
     @Published var trialDeclined: Bool = false
 
@@ -86,10 +80,6 @@ final class MeetingStore: ObservableObject {
         blockedHostIDs = Set(blocked.compactMap { UUID(uuidString: $0) })
         let rsvps = defaults.stringArray(forKey: Keys.rsvps) ?? []
         rsvpIDs = Set(rsvps.compactMap { UUID(uuidString: $0) })
-        let stamp = defaults.double(forKey: Keys.lastPost)
-        if stamp > 0 {
-            lastPostDate = Date(timeIntervalSince1970: stamp)
-        }
         let trialStamp = defaults.double(forKey: Keys.trialStart)
         if trialStamp > 0 {
             trialStartDate = Date(timeIntervalSince1970: trialStamp)
@@ -125,23 +115,9 @@ final class MeetingStore: ObservableObject {
             let mine = try await backend.fetchMyMeetings(userID: uid)
             myMeetingIDs = Set(mine.map { $0.id })
             persistMyIDs()
-            if let latest = mine.compactMap({ $0.createdAt }).max() {
-                if lastPostDate == nil || latest > lastPostDate! {
-                    lastPostDate = latest
-                    persistPostDate()
-                }
-            }
             backendError = nil
         } catch {
             backendError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        }
-    }
-
-    func refreshLastPostDate() async {
-        guard let backend, let uid = auth?.userID else { return }
-        if let date = try? await backend.fetchLastPostDate(userID: uid) {
-            lastPostDate = date
-            persistPostDate()
         }
     }
 
@@ -171,8 +147,8 @@ final class MeetingStore: ObservableObject {
         }
     }
 
-    /// Publishes a meeting. Throws BackendError.notSignedIn when logged out
-    /// and BackendError.weeklyLimit when the server rejects the post.
+    /// Publishes a meeting. Throws BackendError.notSignedIn when logged out.
+    /// There are no posting limits: posters may publish as often as they like.
     func publish(_ draft: Meeting) async throws {
         guard let backend, let auth, let uid = auth.userID else {
             post(draft)
@@ -187,9 +163,7 @@ final class MeetingStore: ObservableObject {
             let created = try await backend.postMeeting(meeting)
             meetings.append(created)
             myMeetingIDs.insert(created.id)
-            lastPostDate = Date()
             persistMyIDs()
-            persistPostDate()
             backendError = nil
             if trialStartDate == nil {
                 trialStartDate = Date()
@@ -199,11 +173,21 @@ final class MeetingStore: ObservableObject {
             }
             await refreshTrialFromServer()
         } catch {
-            if let backendError = error as? BackendError, backendError == .weeklyLimit {
-                await refreshLastPostDate()
-            }
             throw error
         }
+    }
+
+    /// Saves edits to a meeting the user already posted.
+    /// Throws BackendError.notSignedIn when logged out.
+    func saveEdits(_ meeting: Meeting) async throws {
+        guard let backend, auth?.userID != nil else {
+            throw BackendError.notSignedIn
+        }
+        let updated = try await backend.updateMeeting(meeting)
+        if let index = meetings.firstIndex(where: { $0.id == updated.id }) {
+            meetings[index] = updated
+        }
+        backendError = nil
     }
 
     // MARK: - Location
@@ -394,23 +378,11 @@ final class MeetingStore: ObservableObject {
             && !isResolving
     }
 
-    // MARK: - Posting (paid, once per week)
-
-    var canPostBySchedule: Bool {
-        guard let last = lastPostDate else { return true }
-        return Date().timeIntervalSince(last) >= Self.postCooldown
-    }
-
-    var nextEligiblePostDate: Date? {
-        guard let last = lastPostDate, !canPostBySchedule else { return nil }
-        return last.addingTimeInterval(Self.postCooldown)
-    }
+    // MARK: - Posting
 
     func post(_ meeting: Meeting) {
         meetings.append(meeting)
         myMeetingIDs.insert(meeting.id)
-        lastPostDate = Date()
-        defaults.set(Date().timeIntervalSince1970, forKey: Keys.lastPost)
         persistMyIDs()
         if trialStartDate == nil {
             trialStartDate = Date()
@@ -508,13 +480,5 @@ final class MeetingStore: ObservableObject {
 
     private func persistRSVPs() {
         defaults.set(rsvpIDs.map { $0.uuidString }, forKey: Keys.rsvps)
-    }
-
-    private func persistPostDate() {
-        if let lastPostDate {
-            defaults.set(lastPostDate.timeIntervalSince1970, forKey: Keys.lastPost)
-        } else {
-            defaults.removeObject(forKey: Keys.lastPost)
-        }
     }
 }
