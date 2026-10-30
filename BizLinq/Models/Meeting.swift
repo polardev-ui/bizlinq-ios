@@ -30,54 +30,59 @@ enum SearchRadius: Double, CaseIterable, Identifiable, Hashable {
 }
 
 enum MeetingCategory: String, CaseIterable, Identifiable, Codable, Hashable {
-    case realEstate = "Real Estate Meetings"
-    case businessNetworking = "Business Networking"
-    case technology = "Technology Meetings"
-    case specialEvents = "Special Events"
+    case businessNetworking = "Business & Professional Networking"
+    case realEstate = "Real Estate & Investing"
+    case technology = "Technology & Innovation"
+    case networkMarketing = "Network Marketing"
+    case exploreAll = "Explore All Groups"
 
     var id: String { rawValue }
 
-    /// Short chip label for the Discover filter row.
     var shortName: String {
         switch self {
+        case .businessNetworking: return "Business"
         case .realEstate: return "Real Estate"
-        case .businessNetworking: return "Networking"
         case .technology: return "Technology"
-        case .specialEvents: return "Events"
+        case .networkMarketing: return "Network Mktg"
+        case .exploreAll: return "Explore All"
         }
     }
 
-    /// Old category names still present in previously imported rows.
-    /// Maps them forward so legacy content keeps working.
-    /// "Business Start Ups" and "Network Marketing" were merged into Networking.
     init(fromLegacy rawValue: String) {
         if let exact = MeetingCategory(rawValue: rawValue) {
             self = exact
             return
         }
         switch rawValue {
-        case "Founders & Startups", "Business Start Ups", "Network Marketing": self = .businessNetworking
+        case "Business Networking", "Business Start Ups", "Network Marketing", "General Networking":
+            self = .businessNetworking
+        case "Real Estate Meetings": self = .realEstate
+        case "Technology Meetings": self = .technology
+        case "Special Events": self = .exploreAll
         case "Tech & Software": self = .technology
+        case "Founders & Startups": self = .businessNetworking
         case "Sales & Marketing": self = .businessNetworking
-        default: self = .businessNetworking
+        default: self = .exploreAll
         }
     }
 
     var systemImage: String {
         switch self {
-        case .realEstate: return "building.2.fill"
         case .businessNetworking: return "person.2.fill"
+        case .realEstate: return "building.2.fill"
         case .technology: return "laptopcomputer"
-        case .specialEvents: return "star.fill"
+        case .networkMarketing: return "megaphone.fill"
+        case .exploreAll: return "globe"
         }
     }
 
     var tint: Color {
         switch self {
-        case .realEstate: return .brown
         case .businessNetworking: return .teal
+        case .realEstate: return .brown
         case .technology: return .blue
-        case .specialEvents: return .purple
+        case .networkMarketing: return .pink
+        case .exploreAll: return .purple
         }
     }
 }

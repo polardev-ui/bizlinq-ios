@@ -42,11 +42,11 @@ METROS = [
 ]
 
 TOPIC_CATEGORY = [
-    (("real estate", "real-estate", "realtor", "property"), "Real Estate Meetings"),
+    (("real estate", "real-estate", "realtor", "property"), "Real Estate & Investing"),
     (("founder", "startup", "entrepreneur", "pitch", "venture"), "Business Networking"),
-    (("tech", "software", "developer", "coding", "data science", "ai ", "artificial intelligence", "cyber"), "Technology Meetings"),
+    (("tech", "software", "developer", "coding", "data science", "ai ", "artificial intelligence", "cyber"), "Technology & Innovation"),
     (("market", "sales", "seo", "social media", "advertising", "branding", "mlm", "multi-level"), "Business Networking"),
-    (("finance", "invest", "stock", "crypto", "trading", "wealth", "women", "career", "young professional", "millennial", "job"), "Business Networking"),
+    (("finance", "invest", "stock", "crypto", "trading", "wealth", "women", "career", "young professional", "millennial", "job"), "Business & Professional Networking"),
 ]
 
 # Slug/name tokens that mark a group as social-not-professional. Whole-token
@@ -147,33 +147,33 @@ def categorize(topics, title, group_name=""):
 
     # 1. Explicit Real Estate in title or group always wins.
     if _any(RE_PATTERNS, tg):
-        return "Real Estate Meetings"
+        return "Real Estate & Investing"
     # 2. Title signals outrank group topics.
     # NOTE: startup/founder content merges into Business Networking (no separate tab).
     if _any(TECH_PATTERNS, title_l):
-        return "Technology Meetings"
+        return "Technology & Innovation"
     if _any(STARTUP_PATTERNS, title_l):
-        return "Business Networking"
+        return "Explore All Groups"
     if _any(MARKETING_PATTERNS, title_l):
-        return "Business Networking"
+        return "Explore All Groups"
     # 3. Group-name signals.
     if _any(TECH_PATTERNS, group_l):
-        return "Technology Meetings"
+        return "Technology & Innovation"
     if _any(STARTUP_PATTERNS, group_l):
-        return "Business Networking"
+        return "Explore All Groups"
     if _any(MARKETING_PATTERNS, group_l):
-        return "Business Networking"
+        return "Explore All Groups"
     # 4. Topics only as a last resort, and only for explicit RE.
     if _any(RE_PATTERNS, topics_l):
-        return "Real Estate Meetings"
+        return "Real Estate & Investing"
     for patterns, cat in (
-        (TECH_PATTERNS, "Technology Meetings"),
+        (TECH_PATTERNS, "Technology & Innovation"),
         (STARTUP_PATTERNS, "Business Networking"),
         (MARKETING_PATTERNS, "Network Marketing"),
     ):
         if _any(patterns, topics_l):
             return cat
-    return "Business Networking"
+    return "Explore All Groups"
 
 
 def fetch(url, tries=3):

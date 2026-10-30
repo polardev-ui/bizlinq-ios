@@ -37,13 +37,13 @@ MONTHS = {m.lower(): i + 1 for i, m in enumerate(
 MONTHS.update({m[:3]: i for m, i in MONTHS.items()})
 
 PURPOSE_CATEGORY = [
-    (("real estate", "realtor", "property", "rei "), "Real Estate Meetings"),
-    (("tech", "software", "developer", "coding", "data", "cyber", "ai "), "Technology Meetings"),
-    (("founder", "startup", "entrepreneur", "pitch"), "Business Networking"),
-    (("market", "sales", "mlm", "multi-level", "branding"), "Business Networking"),
+    (("real estate", "realtor", "property", "rei "), "Real Estate & Investing"),
+    (("tech", "software", "developer", "coding", "data", "cyber", "ai "), "Technology & Innovation"),
+    (("founder", "startup", "entrepreneur", "pitch"), "Business & Professional Networking"),
+    (("market", "sales", "mlm", "multi-level", "branding"), "Network Marketing"),
     (("referral", "network", "chamber", "business", "professional", "executive",
       "leadership", "finance", "invest", "women", "career", "young professional",
-      "summit", "expo", "conference", "mixer", "entrepreneur"), "Business Networking"),
+      "summit", "expo", "conference", "mixer", "entrepreneur"), "Business & Professional Networking"),
 ]
 
 SKIP_PURPOSE = ("company introduction", "company presentation")
@@ -208,7 +208,7 @@ def map_category(purpose, title, group):
     for keys, cat in PURPOSE_CATEGORY:
         if any(k in hay for k in keys):
             return cat
-    return "Business Networking"
+    return "Explore All Groups"
 
 
 def split_records(full):

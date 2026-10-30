@@ -12,11 +12,11 @@ const UA = "BizLinq-Curator/1.0 (+https://bizlinq.app/support)";
 const GROUPS_PER_RUN = 60;
 
 const TOPIC_CATEGORY: Array<[string[], string]> = [
-  [["real estate", "real-estate", "realtor", "property"], "Real Estate Meetings"],
-  [["founder", "startup", "entrepreneur", "pitch", "venture"], "Business Networking"],
-  [["tech", "software", "developer", "coding", "data science", "artificial intelligence", "cyber"], "Technology Meetings"],
-  [["market", "sales", "seo", "social media", "advertising", "branding", "mlm", "multi-level"], "Business Networking"],
-  [["finance", "invest", "stock", "crypto", "trading", "wealth", "women", "career", "young professional", "millennial", "job"], "Business Networking"],
+  [["real estate", "real-estate", "realtor", "property"], "Real Estate & Investing"],
+  [["founder", "startup", "entrepreneur", "pitch", "venture"], "Business & Professional Networking"],
+  [["tech", "software", "developer", "coding", "data science", "artificial intelligence", "cyber"], "Technology & Innovation"],
+  [["market", "sales", "seo", "social media", "advertising", "branding", "mlm", "multi-level"], "Network Marketing"],
+  [["finance", "invest", "stock", "crypto", "trading", "wealth", "women", "career", "young professional", "millennial", "job"], "Business & Professional Networking"],
 ];
 
 const PHRASE_EXCLUDE = ["language exchange", "learn english", "learn spanish", "english class", "spanish class", "conversation club", "drum circle", "sound bath", "make friends", "new friends", "meet friends"];

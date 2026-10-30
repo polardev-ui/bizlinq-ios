@@ -58,7 +58,7 @@ final class MeetingTests: XCTestCase {
     func testDecodeToleratesUnknownCategoryAndSparsePayload() throws {
         let json = #"{"title":"T","category":"Nope","starts_at":"2026-11-01T18:00:00.123Z"}"#
         let meeting = try JSONDecoder().decode(Meeting.self, from: Data(json.utf8))
-        XCTAssertEqual(meeting.category, .businessNetworking)
+        XCTAssertEqual(meeting.category, .exploreAll)
         XCTAssertEqual(meeting.title, "T")
         XCTAssertNotNil(Meeting.parseISO("2026-11-01T18:00:00.123Z"))
     }

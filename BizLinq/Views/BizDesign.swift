@@ -480,7 +480,14 @@ private struct BizCoverPalette {
                 window: Color(red: 0.55, green: 0.90, blue: 1.0), water: Color(red: 0.14, green: 0.18, blue: 0.40),
                 foliage: Color(red: 0.08, green: 0.20, blue: 0.22)
             )
-        case .specialEvents:
+        case .networkMarketing:
+            return BizCoverPalette(
+                skyTop: Color(red: 0.92, green: 0.62, blue: 0.70), skyBottom: Color(red: 0.99, green: 0.88, blue: 0.92),
+                far: Color(red: 0.84, green: 0.60, blue: 0.70), near: Color(red: 0.40, green: 0.18, blue: 0.34),
+                window: Color(red: 1.0, green: 0.80, blue: 0.88), water: Color(red: 0.44, green: 0.22, blue: 0.40),
+                foliage: Color(red: 0.24, green: 0.20, blue: 0.28)
+            )
+        case .exploreAll:
             return BizCoverPalette(
                 skyTop: Color(red: 0.58, green: 0.40, blue: 0.75), skyBottom: Color(red: 0.98, green: 0.80, blue: 0.82),
                 far: Color(red: 0.70, green: 0.56, blue: 0.74), near: Color(red: 0.28, green: 0.18, blue: 0.38),
