@@ -190,6 +190,24 @@ final class SupabaseRESTClient {
         }
     }
 
+    /// Claims an already-published (curated) meeting for the signed-in user.
+    /// Requires an active subscription — enforced by the client before calling.
+    func claimMeeting(id: UUID) async throws -> Meeting {
+        do {
+            let rows: [Meeting] = try await post(
+                path: "/rest/v1/rpc/claim_meeting",
+                body: ["p_meeting_id": id.uuidString],
+                prefer: "return=representation"
+            )
+            guard let claimed = rows.first else {
+                throw BackendError.server("The server did not return the claimed meeting.")
+            }
+            return claimed
+        } catch let error as APIError {
+            throw BackendError.server(error.message ?? "Request failed.")
+        }
+    }
+
     /// Saves the host's edits to an existing meeting. Only editable listing
     /// fields are sent; ownership and server-stamped columns stay untouched.
     func updateMeeting(_ meeting: Meeting) async throws -> Meeting {

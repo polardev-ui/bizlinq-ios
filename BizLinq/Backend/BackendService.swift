@@ -18,6 +18,7 @@ protocol BackendServiceProtocol {
     func fetchMeetings() async throws -> [Meeting]
     func fetchMyMeetings(userID: UUID) async throws -> [Meeting]
     func postMeeting(_ meeting: Meeting) async throws -> Meeting
+    func claimMeeting(id: UUID) async throws -> Meeting
     func updateMeeting(_ meeting: Meeting) async throws -> Meeting
     func cancelMeeting(id: UUID) async throws
     func setRSVP(meetingID: UUID, userID: UUID, rsvp: Bool) async throws
@@ -100,6 +101,14 @@ final class SupabaseBackendService: BackendServiceProtocol {
     func postMeeting(_ meeting: Meeting) async throws -> Meeting {
         do {
             return try await client.insertMeeting(meeting)
+        } catch {
+            throw mapError(error)
+        }
+    }
+
+    func claimMeeting(id: UUID) async throws -> Meeting {
+        do {
+            return try await client.claimMeeting(id: id)
         } catch {
             throw mapError(error)
         }

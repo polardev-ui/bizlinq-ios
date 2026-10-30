@@ -125,6 +125,9 @@ struct Meeting: Identifiable, Hashable {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 
+    /// True when this meeting is a curated/unclaimed listing (no host yet).
+    var isClaimable: Bool { hostID == nil }
+
     var locationLine: String {
         if isVirtual {
             return "Virtual event"

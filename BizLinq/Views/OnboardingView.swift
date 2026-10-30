@@ -33,7 +33,7 @@ struct OnboardingView: View {
                         .foregroundStyle(BizStyle.ink)
                         .bizAppear(index: 1)
 
-                    Text("Find business networking meetings near you. Free to browse, free to join.")
+                    Text("Find business networking meetings near you. Free to browse and RSVP. Hosts post for $10/month.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal)

@@ -10,6 +10,7 @@ struct MeetingDetailView: View {
     let ranked: RankedMeeting
 
     @State private var showingPaywall = false
+    @State private var paywallClaimMode = false
     @State private var showingSignIn = false
     @State private var rsvpError: String?
     @State private var showingReport = false
@@ -138,10 +139,24 @@ struct MeetingDetailView: View {
         .sensoryFeedback(.success, trigger: rsvpd) { _, new in new }
         .sheet(isPresented: $showingPaywall) {
             NavigationStack {
-                PaywallView()
+                PaywallView(context: paywallClaimMode ? .claim : .standard) {
+                    // After subscribing in claim mode, claim the meeting.
+                    if paywallClaimMode {
+                        Task {
+                            do {
+                                try await store.claimMeeting(meeting)
+                            } catch {
+                                rsvpError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                            }
+                        }
+                    }
+                }
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Close") { showingPaywall = false }
+                            Button("Close") {
+                                paywallClaimMode = false
+                                showingPaywall = false
+                            }
                         }
                     }
             }
@@ -295,8 +310,37 @@ struct MeetingDetailView: View {
         .bizAppear(index: 2)
     }
 
+    private var claimButton: some View {
+        Group {
+            if auth.userID == nil {
+                BizPrimaryButton(title: "Sign in to claim this listing") {
+                    showingSignIn = true
+                }
+            } else if !subscriptions.isPosterActive {
+                BizPrimaryButton(title: "Subscribe to claim — $10/month") {
+                    paywallClaimMode = true
+                    showingPaywall = true
+                }
+            } else {
+                BizPrimaryButton(title: "Claim this listing") {
+                    Task {
+                        do {
+                            try await store.claimMeeting(meeting)
+                            rsvpError = nil
+                        } catch {
+                            rsvpError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private var rsvpBar: some View {
         VStack {
+            if meeting.isClaimable {
+                claimButton
+            }
             Group {
                 if rsvpd {
                     BizSecondaryButton(title: "You're going", systemImage: "checkmark.circle.fill") {

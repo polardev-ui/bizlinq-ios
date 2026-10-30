@@ -4,7 +4,7 @@ import SwiftUI
 struct PaywallView: View {
     @EnvironmentObject private var subscriptions: SubscriptionManager
     @State private var selectedID: String = SubscriptionPlan.monthly.id
-    enum Context { case standard, trialEnded }
+    enum Context { case standard, trialEnded, claim }
     /// `.trialEnded` drops the free-trial pitch: the app trial is used up.
     var context: Context = .standard
     var onPurchased: (() -> Void)? = nil
@@ -20,14 +20,22 @@ struct PaywallView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 22) {
-                Text(context == .trialEnded ? "Keep hosting\non BizLinq" : "Help local professionals\nfind your group")
+                Text(context == .claim ? "Claim this listing"
+                     : context == .trialEnded ? "Keep hosting\non BizLinq"
+                     : "Help local professionals\nfind your group")
                     .font(.title2.bold())
                     .foregroundStyle(BizStyle.ink)
                     .multilineTextAlignment(.center)
                     .padding(.top, 8)
                     .bizAppear(index: 0)
 
-                if context == .trialEnded {
+                if context == .claim {
+                    Text("Subscribe to become the host of this meeting. $10/month, no free trial — the meeting is already live.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .bizAppear(index: 1)
+                } else if context == .trialEnded {
                     Text("Your free trial is over. Choose a plan to post your next meeting — cancel anytime in your App Store settings.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -85,7 +93,7 @@ struct PaywallView: View {
 
                 VStack(spacing: 10) {
                     BizPrimaryButton(
-                        title: trialEligible ? "Start your free trial" : "Subscribe — \(selected.price) \(selected.cadence)",
+                        title: context == .claim ? "Subscribe — $10/month" : trialEligible ? "Start your free trial" : "Subscribe — \(selected.price) \(selected.cadence)",
                         isBusy: subscriptions.isPurchasing
                     ) {
                         Task {
@@ -103,7 +111,7 @@ struct PaywallView: View {
                             .multilineTextAlignment(.center)
                     }
 
-                    Text("Subscription renews automatically.\nCancel in App Store settings. Attending events is always free.")
+                    Text("Subscription renews automatically.\nCancel in App Store settings. Attending events may have fees set by the host.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -120,10 +128,10 @@ struct PaywallView: View {
                     .tint(BizStyle.teal)
 
                     HStack(spacing: 16) {
-                        if let terms = URL(string: "https://bizlinq.app/terms") {
+                        if let terms = URL(string: "https://mybizlinq.com/terms.html") {
                             Link("Terms", destination: terms)
                         }
-                        if let privacy = URL(string: "https://bizlinq.app/privacy") {
+                        if let privacy = URL(string: "https://mybizlinq.com/privacy.html") {
                             Link("Privacy", destination: privacy)
                         }
                     }

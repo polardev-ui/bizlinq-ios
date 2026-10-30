@@ -571,7 +571,20 @@ final class MeetingStore: ObservableObject {
             .sorted { $0.startsAt < $1.startsAt }
     }
 
-    // MARK: - RSVP (free; requires a free account when online)
+    /// Claims an already-published (curated) meeting for the signed-in user.
+    /// Requires an active subscription — no trial is granted.
+    func claimMeeting(_ meeting: Meeting) async throws {
+        guard let backend, auth?.userID != nil else {
+            throw BackendError.notSignedIn
+        }
+        let claimed = try await backend.claimMeeting(id: meeting.id)
+        if let index = meetings.firstIndex(where: { $0.id == claimed.id }) {
+            meetings[index] = claimed
+        }
+        myMeetingIDs.insert(claimed.id)
+        persistMyIDs()
+        backendError = nil
+    }
 
     func toggleRSVP(for meeting: Meeting) async throws {
         guard let index = meetings.firstIndex(where: { $0.id == meeting.id }) else { return }
